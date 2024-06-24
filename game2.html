@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D貪吃蛇遊戲</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameOver">
+        <h2>遊戲結束</h2>
+        <p>你撞到了牆壁！</p>
+        <button onclick="restartGame()">重新開始</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, snake = [], food, direction, gameLoop;
+        const gameOverScreen = document.getElementById('gameOver');
+        const gridSize = 20;
+        const unitSize = 10;
+
+        init();
+        startGame();
+
+        function init() {
+            // 創建場景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x90EE90);
+
+            // 創建相機
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 200, 300);
+            camera.lookAt(0, 0, 0);
+
+            // 創建渲染器
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // 創建地板
+            const floorGeometry = new THREE.PlaneGeometry(gridSize * unitSize, gridSize * unitSize);
+            const floorMaterial = new THREE.MeshBasicMaterial({ color: 0x008000 });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            // 創建蛇
+            const snakeMaterial = new THREE.MeshBasicMaterial({ color: 0x228B22 });
+            for (let i = 0; i < 3; i++) {
+                const snakePart = new THREE.Mesh(new THREE.BoxGeometry(unitSize, unitSize, unitSize), snakeMaterial);
+                snakePart.position.set(i * unitSize, unitSize / 2, 0);
+                snake.push(snakePart);
+                scene.add(snakePart);
+            }
+
+            // 創建食物
+            createFood();
+
+            window.addEventListener('resize', onWindowResize, false);
+            document.addEventListener('keydown', onDocumentKeyDown, false);
+        }
+
+        function createFood() {
+            if (food) scene.remove(food);
+
+            const foodGeometry = new THREE.BoxGeometry(unitSize, unitSize, unitSize);
+            const foodMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000 });
+            food = new THREE.Mesh(foodGeometry, foodMaterial);
+            food.position.set(
+                Math.floor(Math.random() * gridSize - gridSize / 2) * unitSize,
+                unitSize / 2,
+                Math.floor(Math.random() * gridSize - gridSize / 2) * unitSize
+            );
+            scene.add(food);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onDocumentKeyDown(event) {
+            const keyCode = event.keyCode;
+            switch (keyCode) {
+                case 37: // left arrow
+                    if (direction !== 'right') direction = 'left';
+                    break;
+                case 39: // right arrow
+                    if (direction !== 'left') direction = 'right';
+                    break;
+                case 38: // up arrow
+                    if (direction !== 'down') direction = 'up';
+                    break;
+                case 40: // down arrow
+                    if (direction !== 'up') direction = 'down';
+                    break;
+            }
+        }
+
+        function moveSnake() {
+            const head = snake[0];
+            const newHeadPosition = head.position.clone();
+
+            switch (direction) {
+                case 'left':
+                    newHeadPosition.x -= unitSize;
+                    break;
+                case 'right':
+                    newHeadPosition.x += unitSize;
+                    break;
+                case 'up':
+                    newHeadPosition.z -= unitSize;
+                    break;
+                case 'down':
+                    newHeadPosition.z += unitSize;
+                    break;
+            }
+
+            if (newHeadPosition.x >= gridSize * unitSize / 2 || newHeadPosition.x <= -gridSize * unitSize / 2 ||
+                newHeadPosition.z >= gridSize * unitSize / 2 || newHeadPosition.z <= -gridSize * unitSize / 2) {
+                gameOver();
+                return;
+            }
+
+            for (let i = snake.length - 1; i > 0; i--) {
+                snake[i].position.copy(snake[i - 1].position);
+            }
+            head.position.copy(newHeadPosition);
+
+            if (head.position.equals(food.position)) {
+                const newPart = new THREE.Mesh(new THREE.BoxGeometry(unitSize, unitSize, unitSize), new THREE.MeshBasicMaterial({ color: 0x228B22 }));
+                newPart.position.copy(snake[snake.length - 1].position);
+                snake.push(newPart);
+                scene.add(newPart);
+                createFood();
+            }
+        }
+
+        function gameOver() {
+            clearInterval(gameLoop);
+            gameOverScreen.style.display = 'block';
+        }
+
+        function restartGame() {
+            snake.forEach(part => scene.remove(part));
+            snake = [];
+            direction = null;
+            for (let i = 0; i < 3; i++) {
+                const snakePart = new THREE.Mesh(new THREE.BoxGeometry(unitSize, unitSize, unitSize), new THREE.MeshBasicMaterial({ color: 0x228B22 }));
+                snakePart.position.set(i * unitSize, unitSize / 2, 0);
+                snake.push(snakePart);
+                scene.add(snakePart);
+            }
+            createFood();
+            gameOverScreen.style.display = 'none';
+            startGame();
+        }
+
+        function startGame() {
+            direction = 'right';
+            gameLoop = setInterval(() => {
+                moveSnake();
+                renderer.render(scene, camera);
+            }, 200);
+        }
+    </script>
+</body>
+</html>
