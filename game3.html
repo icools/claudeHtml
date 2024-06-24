@@ -20,6 +20,7 @@
 
         init();
         animate();
+        setInterval(createRandomShape, 1000); // 每秒掉落一個新物體
 
         function init() {
             // 創建場景
@@ -54,12 +55,8 @@
             floorBody.position.set(0, 0, 0);
             world.addBody(floorBody);
 
-            // 創建隨機形狀的物體
-            for (let i = 0; i < 20; i++) {
-                createRandomShape();
-            }
-
             window.addEventListener('resize', onWindowResize, false);
+            window.addEventListener('click', createRandomShape, false);
         }
 
         function createRandomShape() {
