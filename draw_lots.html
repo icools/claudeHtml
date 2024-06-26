@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>東京淺草觀音寺一百籤 - 有趣版本</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f0e68c, #deb887);
+            color: #4a4a4a;
+        }
+        #buddha-container {
+            width: 100%;
+            height: 60vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #buddha-image {
+            width: 50%;
+            height: 50%;
+            max-width: 300px;
+            max-height: 300px;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        #instructions {
+            max-width: 600px;
+            margin: 20px 0;
+            text-align: center;
+            padding: 20px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #drawButton {
+            font-size: 1.2em;
+            padding: 15px 30px;
+            cursor: pointer;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #drawButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 1.5em;
+            text-align: center;
+            padding: 20px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #footer {
+            margin-top: 20px;
+            text-align: center;
+            padding: 20px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 10px 10px 0 0;
+            width: 100%;
+        }
+        #fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .fortune-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 80%;
+            margin: 20px auto;
+            text-align: center;
+            font-size: 1.2em;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="buddha-container">
+        <svg id="buddha-image" viewBox="0 0 100 100">
+            <path d="M50 5 C25 5 5 25 5 50 C5 75 25 95 50 95 C75 95 95 75 95 50 C95 25 75 5 50 5 Z" fill="#f0e68c"/>
+            <circle cx="50" cy="30" r="15" fill="#deb887"/>
+            <path d="M35 50 Q50 60 65 50 Q50 80 35 50 Z" fill="#deb887"/>
+            <circle cx="43" cy="28" r="3" fill="#000"/>
+            <circle cx="57" cy="28" r="3" fill="#000"/>
+            <path d="M47 35 Q50 37 53 35" fill="none" stroke="#000" stroke-width="1"/>
+        </svg>
+    </div>
+    <h1>台灣AI淺草觀音寺一百籤</h1>
+    <div id="instructions">
+        請誠心默念自己姓名、國曆生日、戶籍、住址和請示的事情，比如說仕途、身心、事業和者姻緣，並且左手摸右手，右手摸左手，然後轉三圈後，點擊下方的「抽籤」按鈕。
+    </div>
+    <button id="drawButton">抽籤</button>
+    <div class="fortune-card"></div>
+    <canvas id="fireworks"></canvas>
+    <div id="footer">
+        本網站利用 Claude 3.5 完成
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script>
+        const fortunes = [
+            "你的運勢如春天的櫻花，美麗而短暫，珍惜當下吧！",
+            "財運亨通，但小心被一隻調皮的貓咪偷走你的錢包。",
+            "你的真愛就在附近，可能在便利商店買關東煮。",
+            "事業蒸蒸日上，但要小心辦公室的打印機，它可能暗中嫉妒你。",
+            "健康運勢穩定，不過還是要多吃蔬菜，胡蘿蔔不會騙人的。",
+            "旅行運佳，但可能會在異國他鄉愛上一位神秘的街頭藝人。",
+            "學習運UP！UP！今天正是開始學習如何製作完美壽司的好日子。",
+            "小心口袋裡的零錢，它們可能會合謀逃跑去自動販賣機裡避暑。",
+            "今天的幸運色是彩虹色！穿得像個人體彩虹，讓所有人都羨慕你。",
+            "不要輕易答應別人的要求，除非對方請你吃壽司吧。",
+            "今天你可能會遇到外星人，記得帶上你的寵物仙人掌以示友好。",
+            "投資運佳，考慮投資一間專門賣章魚小丸子冰淇淋的店吧！",
+            "戀愛運穩定，但要小心誤把火鍋的湯底當成告白的對象。",
+            "工作上可能會遇到一些挑戰，但別擔心，你的守護神是一隻忍者貓咪。",
+            "今天的幸運物是防曬霜，塗得越多，運氣越好！",
+            "小心有人想偷走你的創意，特別是那些看起來很像河豚的人。",
+            "家庭運勢良好，考慮收養一隻會說人話的鸚鵡作為家庭新成員。",
+            "今天適合嘗試新事物，比如用筷子吃西瓜或用叉子吃拉麵。",
+            "財運普通，但你可能會在街上撿到一張會唱歌的千元鈔票。",
+            "健康運ups and downs，記得每天對著鏡子做鬼臉，能增強免疫力。",
+            "今天你的創意如泉湧，但請確保不要把它們寫在即將消失的魔法紙上。",
+            "桃花運旺盛，但當心誤把路邊的櫻花樹當成潛在對象。",
+            "工作效率超高，彷彿喝了十杯特濃咖啡，但請記得偶爾眨眼。",
+            "今日幸運數字是π，要不要來點圓周率口味的派慶祝一下？",
+            "財運還行，不過可能會被一群精明的松鼠要求投資橡果股市。",
+            "健康狀況良好，但還是要小心被樓下跳廣場舞的大媽們的音樂洗腦。",
+            "今天特別適合冒險，比如嘗試將襪子穿在拖鞋外面上街走走。",
+            "戀愛運勢高漲，月老可能會用丘比特之箭射中你...的腳趾。",
+            "事業運起起落落，就像是在玩職場版的跳房子遊戲。",
+            "今天的幸運食物是泡麵，但要小心把湯匙當成吸管使用。",
+            "學習效率超群，連沙發上的抱枕都覺得你太用功了。",
+            "小心被路上的招財貓招手，它可能想跟你玩「漢堡包」遊戲。",
+            "今天適合社交，不妨跟你家的盆栽們來場深入的哲學討論。",
+            "投資運佳，但要謹慎考慮那位聲稱自己是未來人的股市預言家的建議。",
+            "今日吉祥物是企鵝，不妨穿得像企鵝一樣優雅地度過這一天。",
+            "運勢如洋蔥，層層剝開可能會讓你感動得流淚。",
+            "今天你的魅力無人能擋，連紅綠燈都會為你大放異彩。",
+            "工作上可能會遇到一些阻礙，但別擔心，你的守護精靈是一隻會寫程式的狐狸。",
+            "今天特別適合存錢，不如存在枕頭底下，讓幸運之神守護你的財富？",
+            "桃花朵朵開，但要小心不要錯把路邊的向日葵當成愛慕者。",
+            "今天的幸運物是雨傘，晴天帶把傘，不僅防曬還能耍帥。",
+            "健康運勢穩定，不過還是要小心被樓上鄰居的健身操音樂帶入節奏。",
+            "財運亨通，但要提防被一群精明的螞蟻要求投資他們的地下王國。",
+            "今天你的直覺特別準，連便利商店的關東煮都能準確預測哪個最好吃。",
+            "事業運勢如過山車，請繫好安全帶，享受這刺激的職場旅程。",
+            "今日最佳運動是原地跳高，越跳越高，運氣越好。",
+            "戀愛運勢還不錯，但要小心誤把電影院裡的3D眼鏡當成桃花眼。",
+            "學習運爆棚，連做夢都在背單字，不過要小心夢遊時背錯。",
+            "今天特別適合大掃除，說不定會在沙發縫裡發現去年過期的幸運餅乾。",
+            "投資運佳，不過要謹慎考慮那個聲稱能用魔法豆換金牛的陌生人的提議。",
+            "今日幸運色是透明色，穿上隱形衣出門說不定能遇到好運。",
+            "健康運勢不錯，不過要小心被樓下跳騙術的大叔的舞步迷惑。",
+            "今天你的創意如同變形金剛，不斷變化，但請記得變回人形。",
+            "財運還行，不過可能會被一群精明的章魚要求投資他們的海底樂園。",
+            "桃花運旺盛，但當心把交通指揮棒當成月老的紅線。",
+            "工作效率超高，像是被時光機加速了，但請記得在正確的時空下班。",
+            "今日幸運數字是∞，要不要來點無限循環的幸運壽司慶祝一下？",
+            "運勢如同魔術方塊，轉來轉去總能找到完美解法。",
+            "今天你的魅力無人能擋，連ATM機都會對你露出笑臉。",
+            "事業運如同跳棋遊戲，每一步都可能讓你躍升新高度。",
+            "今天的幸運物是魔法棒，揮一揮說不定能變出意想不到的好運。",
+            "健康狀況良好，但還是要小心被樓上練劍的武俠迷的絕招迷惑。",
+            "今天特別適合冒險，比如嘗試用筷子吃漢堡或用叉子吃壽司。",
+            "戀愛運勢高漲，丘比特可能會用愛心泡泡槍射中你...的帽子。",
+            "學習效率超群，連家裡的寵物都覺得你太聰明了。",
+            "小心被路上的招財樹招手，它可能想跟你玩「鬼抓人」遊戲。",
+            "今天適合社交，不妨跟你家的冰箱來場深入的美食討論。",
+            "投資運佳，但要謹慎考慮那位聲稱自己是外星富豪的商業夥伴的建議。",
+            "今日吉祥物是無尾熊，不妨像無尾熊一樣慢慢悠悠地度過這一天。",
+            "運勢如彩虹，七彩繽紛，但要小心別被彩虹的盡頭迷惑。",
+            "今天你的創意如同泡泡機，源源不絕，但要記得適時關機休息。",
+            "工作上可能會遇到一些挑戰，但別擔心，你的守護天使是一隻會寫報告的貓頭鷹。",
+            "今天特別適合省錢，不如把零用錢存在一個會說話的存錢筒裡？",
+            "桃花朵朵開，但要小心不要錯把路邊的仙人掌當成熱情的追求者。",
+            "今天的幸運物是望遠鏡，或許能讓你看到意想不到的好運。",
+            "健康運勢穩定，不過還是要小心被樓下鄰居的魔術表演吸引住。",
+            "財運亨通，但要提防被一群精明的海豚要求投資他們的水上樂園。",
+            "今天你的第六感特別靈敏，連便利商店的關東煮都能聽懂你的心聲。",
+            "事業運勢如同彈跳球，越挫越勇，彈得越高。",
+            "今日最佳運動是槓鈴臉，越誇張越好，能嚇走所有霉運。",
+            "戀愛運勢不錯，但要小心誤把天文望遠鏡當成月老的紅線。",
+            "學習運爆棚，連走路都在背公式，不過要小心撞到電線桿。",
+            "今天特別適合大掃除，說不定會在書櫃後面發現一個通往異世界的入口。",
+            "投資運佳，不過要謹慎考慮那個聲稱能用魔法豆換時光機的發明家的提議。",
+            "今日幸運色是漸層色，不知道要怎麼穿？那就把彩虹穿在身上吧！",
+            "健康運勢不錯，不過要小心被樓上練習瑜伽的鄰居的高難度動作迷惑。",
+            "今天你的創意如同變色龍，隨時都在改變，但請記得不要忘記原本的自己。",
+            "財運還行，不過可能會被一群精明的外星人要求投資他們的太空旅館。",
+            "桃花運旺盛，但當心把交通指揮棒當成月老的紅線。",
+            "工作效率超高，像是喝了速度感藥水，但請記得在正確的現實中完成任務。",
+            "今日幸運數字是圓周率，要不要來點無限循環的幸運派對？",
+            "運勢如同魔法撲克牌，抽到什麼牌，今天就有什麼樣的驚喜。",
+            "今天你的魅力無人能擋，連紅綠燈都會為你大跳華爾滋。",
+            "事業運如同電子雞遊戲，細心呵護就能茁壯成長。",
+            "今天的幸運物是隱形眼鏡，戴上它也許能看穿生活中的美好機遇。",
+            "健康狀況良好，但還是要小心被樓下打太極的大爺的慢動作迷惑。",
+            "今天特別適合冒險，比如嘗試用湯匙吃麵條或用筷子喝湯。",
+            "戀愛運勢高漲，月老可能會用 WiFi 信號傳送桃花給你。",
+            "學習效率超群，連家裡的植物都覺得你在吸收知識方面比它們厲害。"
+        ];
+
+        function drawFortune() {
+            const buddha = document.getElementById('buddha-image');
+            gsap.to(buddha, {duration: 0.5, scale: 1.2, yoyo: true, repeat: 1});
+
+            setTimeout(() => {
+                createFireworks();
+                const fortune = fortunes[Math.floor(Math.random() * fortunes.length)];
+                const card = document.querySelector('.fortune-card');
+                card.textContent = fortune;
+                card.style.display = 'block';
+                gsap.from(card, {duration: 1, y: 50, opacity: 0, ease: "back.out(1.7)"});
+            }, 1000);
+        }
+
+        function createFireworks() {
+            const canvas = document.getElementById('fireworks');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            function createParticles(x, y) {
+                const particleCount = 100;
+                const particles = [];
+
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = {
+                        x: x,
+                        y: y,
+                        vx: Math.random() * 6 - 3,
+                        vy: Math.random() * 6 - 3,
+                        radius: Math.random() * 2 + 1,
+                        color: `hsl(${Math.random() * 360}, 50%, 50%)`,
+                        alpha: 1
+                    };
+                    particles.push(particle);
+                }
+
+                return particles;
+            }
+
+            function drawParticles(particles) {
+                particles.forEach(particle => {
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = particle.color;
+                    ctx.globalAlpha = particle.alpha;
+                    ctx.fill();
+
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.alpha -= 0.01;
+                });
+
+                particles = particles.filter(particle => particle.alpha > 0);
+
+                if (particles.length > 0) {
+                    requestAnimationFrame(() => drawParticles(particles));
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height / 2;
+            const particles = createParticles(x, y);
+            drawParticles(particles);
+        }
+
+        document.getElementById('drawButton').addEventListener('click', drawFortune);
+    </script>
+</body>
+</html>
