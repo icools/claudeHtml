@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>塞爾達風格 RPG 遊戲 - Tree3D.js 版本</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        .mobile-control {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.5);
+            border: none;
+            border-radius: 25px;
+            font-size: 20px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/three-mesh-ui@6.5.4/build/three-mesh-ui.js"></script>
+    <script src="https://unpkg.com/three-spritetext"></script>
+    <script src="https://unpkg.com/tree3d@0.1.7/build/tree3d.min.js"></script>
+    <script>
+        // 初始化 Tree3D 場景
+        const game = new Tree3D.Game();
+
+        // 創建地圖
+        const mapSize = 50;
+        const ground = new Tree3D.Plane({
+            width: mapSize,
+            height: mapSize,
+            rotationX: -Math.PI / 2,
+            y: 0,
+            color: 0x00ff00
+        });
+        game.add(ground);
+
+        // 創建主角
+        const hero = new Tree3D.Cube({
+            width: 1,
+            height: 1,
+            depth: 1,
+            y: 0.5,
+            color: 0x0000ff
+        });
+        game.add(hero);
+
+        // 創建怪物
+        const monster = new Tree3D.Sphere({
+            radius: 0.5,
+            x: 5,
+            y: 0.5,
+            z: 5,
+            color: 0xff0000
+        });
+        game.add(monster);
+
+        // 設置相機
+        game.camera.position.set(0, 10, 20);
+        game.camera.lookAt(hero.position);
+
+        // 鍵盤控制
+        const keyboard = {};
+        document.addEventListener('keydown', (event) => {
+            keyboard[event.key] = true;
+        });
+        document.addEventListener('keyup', (event) => {
+            keyboard[event.key] = false;
+        });
+
+        // 移動速度
+        const speed = 0.1;
+
+        // 遊戲循環
+        game.onUpdate(() => {
+            // 主角移動
+            if (keyboard['w']) hero.position.z -= speed;
+            if (keyboard['s']) hero.position.z += speed;
+            if (keyboard['a']) hero.position.x -= speed;
+            if (keyboard['d']) hero.position.x += speed;
+
+            // 攻擊
+            if (keyboard[' ']) {
+                console.log('攻擊!');
+                // 在這裡添加攻擊邏輯和特效
+            }
+
+            // 更新相機位置
+            game.camera.position.set(hero.position.x, hero.position.y + 10, hero.position.z + 20);
+            game.camera.lookAt(hero.position);
+        });
+
+        // 添加移動端控制
+        function addMobileControls() {
+            const buttons = [
+                {key: 'w', label: '↑', style: 'bottom:120px;left:50%;transform:translateX(-50%);'},
+                {key: 's', label: '↓', style: 'bottom:20px;left:50%;transform:translateX(-50%);'},
+                {key: 'a', label: '←', style: 'bottom:70px;left:calc(50% - 55px);'},
+                {key: 'd', label: '→', style: 'bottom:70px;left:calc(50% + 55px);'},
+                {key: ' ', label: '攻擊', style: 'bottom:70px;right:20px;'}
+            ];
+
+            buttons.forEach(btn => {
+                const element = document.createElement('button');
+                element.className = 'mobile-control';
+                element.style.cssText += btn.style;
+                element.innerText = btn.label;
+                element.addEventListener('touchstart', () => { keyboard[btn.key] = true; });
+                element.addEventListener('touchend', () => { keyboard[btn.key] = false; });
+                document.body.appendChild(element);
+            });
+        }
+
+        // 處理窗口大小變化
+        window.addEventListener('resize', () => {
+            game.resize();
+        });
+
+        addMobileControls();
+        game.start();
+    </script>
+</body>
+</html>

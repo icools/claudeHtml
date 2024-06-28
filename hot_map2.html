@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Heatmap and Polyline</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mapbox/polyline@1.1.1/src/polyline.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script>
+        var initialPolyline = "wwzwCeb|dVmAjD{GUwBkZnPv@bDF@mIj@xIVd@lCVjAcBtRtCbKr@b^uArJDbFdRhKjg@yD~j@qBvZukAiJ~@|DjCQo@wIiEvPcKloAmPl`A|RgCfk@~F|eAiZih@pGuH{R";
+    </script>
+    <style>
+        #control-panel {
+            position: absolute;
+            top: 10px;
+            left: 50px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="control-panel">
+        <input type="text" id="polyline-input" value="" style="width: 500px;">
+        <button onclick="drawHeatmapAndPolyline()">Draw</button>
+    </div>
+    <div id="mapid" style="width: 100%; height: 600px;"></div>
+    <script>
+        var initialPolyline = "wwzwCeb|dVmAjD{GUwBkZnPv@bDF@mIj@xIVd@lCVjAcBtRtCbKr@b^uArJDbFdRhKjg@yD~j@qBvZukAiJ~@|DjCQo@wIiEvPcKloAmPl`A|RgCfk@~F|eAiZih@pGuH{R";
+        document.getElementById('polyline-input').value = initialPolyline;
+
+        var map = L.map('mapid').setView([25.0330, 121.5654], 12);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        function drawHeatmapAndPolyline() {
+            var encodedPolyline = document.getElementById('polyline-input').value;
+            var latlngs = polyline.decode(encodedPolyline);
+
+            if (typeof heatLayer !== 'undefined') {
+                map.removeLayer(heatLayer);
+            }
+
+            if (typeof polylineLayer !== 'undefined') {
+                map.removeLayer(polylineLayer);
+            }
+
+            heatLayer = L.heatLayer(latlngs, {
+                radius: 25
+            }).addTo(map);
+
+            polylineLayer = L.polyline(latlngs, {
+                color: 'blue'
+            }).addTo(map);
+
+            map.fitBounds(polylineLayer.getBounds());
+        }
+
+        drawHeatmapAndPolyline(); // Draw the initial heatmap and polyline
+    </script>
+</body>
+</html>
