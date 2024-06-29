@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taipei Ubike Map</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #fff9c4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .bike-icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+            display: block;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+        }
+        .slider {
+            width: 200px;
+            margin: 0 10px;
+        }
+        .map-container {
+            height: 400px;
+            background-color: #f0f0f0;
+            position: relative;
+            overflow: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .station {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 4px;
+        }
+        .fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+            background-color: white;
+        }
+        .hide-fullscreen {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .last-updated {
+            text-align: right;
+            margin-top: 10px;
+            font-style: italic;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading {
+            animation: spin 2s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <svg class="bike-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="#FFD700"/>
+            <circle cx="35" cy="65" r="10" fill="#000"/>
+            <circle cx="65" cy="65" r="10" fill="#000"/>
+            <path d="M50 25 L60 45 H40 Z" fill="#000"/>
+        </svg>
+        
+        <div class="controls">
+            <button id="refresh-btn">更新</button>
+            <div class="slider-container">
+                更新頻率: <span id="interval-display">10</span> 秒
+                <input type="range" min="5" max="30" value="10" step="5" class="slider" id="interval-slider">
+            </div>
+        </div>
+
+        <div id="map-container" class="map-container">
+            <!-- Ubike stations will be populated here -->
+        </div>
+
+        <div class="controls">
+            <button id="fullscreen-btn">全螢幕</button>
+            <div id="last-updated" class="last-updated"></div>
+        </div>
+    </div>
+
+    <script>
+        const bikeIcon = document.querySelector('.bike-icon');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const intervalSlider = document.getElementById('interval-slider');
+        const intervalDisplay = document.getElementById('interval-display');
+        const mapContainer = document.getElementById('map-container');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const lastUpdated = document.getElementById('last-updated');
+
+        let updateInterval = 10000;
+        let updateTimer;
+
+        function fetchUbikeData() {
+            bikeIcon.classList.add('loading');
+            // 模擬 API 調用
+            setTimeout(() => {
+                const mockData = Array(10).fill().map((_, index) => ({
+                    id: index + 1,
+                    location: `位置 ${index + 1}`,
+                    bikes: Math.floor(Math.random() * 20)
+                }));
+                updateMap(mockData);
+                bikeIcon.classList.remove('loading');
+                lastUpdated.textContent = `最後更新: ${new Date().toLocaleTimeString()}`;
+            }, 1000);
+        }
+
+        function updateMap(data) {
+            mapContainer.innerHTML = '';
+            data.forEach(station => {
+                const stationElement = document.createElement('div');
+                stationElement.className = 'station';
+                stationElement.innerHTML = `
+                    <h3>${station.location}</h3>
+                    <p>可用車輛: ${station.bikes}</p>
+                `;
+                mapContainer.appendChild(stationElement);
+            });
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                mapContainer.requestFullscreen();
+                fullscreenBtn.textContent = '退出全螢幕';
+                const hideBtn = document.createElement('button');
+                hideBtn.textContent = '隱藏';
+                hideBtn.className = 'hide-fullscreen';
+                hideBtn.onclick = () => document.exitFullscreen();
+                mapContainer.appendChild(hideBtn);
+            } else {
+                document.exitFullscreen();
+                fullscreenBtn.textContent = '全螢幕';
+            }
+        }
+
+        refreshBtn.addEventListener('click', fetchUbikeData);
+
+        intervalSlider.addEventListener('input', (e) => {
+            updateInterval = e.target.value * 1000;
+            intervalDisplay.textContent = e.target.value;
+            clearInterval(updateTimer);
+            updateTimer = setInterval(fetchUbikeData, updateInterval);
+        });
+
+        fullscreenBtn.addEventListener('click', toggleFullscreen);
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                fullscreenBtn.textContent = '全螢幕';
+                const hideBtn = mapContainer.querySelector('.hide-fullscreen');
+                if (hideBtn) hideBtn.remove();
+            }
+        });
+
+        // 初始化
+        fetchUbikeData();
+        updateTimer = setInterval(fetchUbikeData, updateInterval);
+    </script>
+</body>
+</html>

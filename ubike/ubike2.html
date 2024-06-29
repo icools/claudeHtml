@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台北 Ubike 資料</title>
+    <style>
+        body {
+            padding: 8px;
+        }
+
+        h1 {
+            background-color: #f0f0f0;
+            color: #333;
+            padding: 16px;
+            text-align: center;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+
+        .loading-bar {
+            width: 100%;
+            height: 4px;
+            background-color: #ccc;
+            position: relative;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+
+        .loading-progress {
+            height: 100%;
+            width: 0;
+            background-color: #4caf50;
+            animation: loading 2s infinite;
+        }
+
+        @keyframes loading {
+            0% { width: 0; }
+            100% { width: 100%; }
+        }
+
+        .station-info {
+            margin-bottom: 16px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            background-color: #f3f3f3;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .progress {
+            height: 20px;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            white-space: nowrap;
+            transition: width 0.5s;
+        }
+
+        .low { background-color: red; }
+        .medium { background-color: orange; }
+        .high { background-color: yellow; }
+        .very-high { background-color: green; }
+
+        .map-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            vertical-align: middle;
+            fill: #333;
+            cursor: pointer;
+        }
+
+        #moreButton {
+            display: none;
+            margin: 16px auto;
+            padding: 8px 16px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>台北 Ubike 即時資訊</h1>
+    <div class="loading-bar" id="loadingBar"><div class="loading-progress"></div></div>
+    <ul id="ubikeData"></ul>
+    <button id="moreButton">More</button>
+
+    <script src="ubike.js"></script>
+    <script>
+        let allStations = [];
+        let isShowingAll = false;
+
+        async function displayUbikeData() {
+            const loadingBar = document.getElementById('loadingBar');
+            const moreButton = document.getElementById('moreButton');
+            
+            allStations = await fetchUbikeData();
+            loadingBar.style.display = 'none';
+
+            showStations(allStations.slice(0, 20));
+            moreButton.style.display = 'block';
+
+            moreButton.addEventListener('click', () => {
+                if (!isShowingAll) {
+                    showStations(allStations);
+                    moreButton.style.display = 'none';
+                    isShowingAll = true;
+                }
+            });
+        }
+
+        function showStations(stations) {
+            const ubikeList = document.getElementById('ubikeData');
+            ubikeList.innerHTML = '';
+            stations.forEach(station => {
+                const uiState = station.asUBikeUiState();
+                const listItem = document.createElement('li');
+                listItem.className = 'station-info';
+
+                let progressClass = 'very-high';
+                if (uiState.rentBikeRatio < 25) {
+                    progressClass = 'low';
+                } else if (uiState.rentBikeRatio < 50) {
+                    progressClass = 'medium';
+                } else if (uiState.rentBikeRatio < 75) {
+                    progressClass = 'high';
+                }
+
+                const googleMapsLink = `https://www.google.com/maps?q=${uiState.coordinates.replace('(', '').replace(')', '')}`;
+
+                listItem.innerHTML = `
+                    ${uiState.name.replace('YouBike2.0_', '')} 
+                    <a href="${googleMapsLink}" target="_blank">
+                        <svg class="map-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/></svg>
+                    </a>
+                    <div>可借: ${uiState.availableRentBikes} / 可停: ${uiState.availableReturnBikes} / 總共: ${station.total}</div>
+                    <div class="progress-bar">
+                        <div class="progress ${progressClass}" style="width: ${uiState.rentBikeRatio}%;">${uiState.rentBikeRatio}%</div>
+                    </div>
+                `;
+                ubikeList.appendChild(listItem);
+            });
+        }
+
+        displayUbikeData();
+    </script>
+</body>
+</html>
