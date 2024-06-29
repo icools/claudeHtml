@@ -22,12 +22,36 @@
             height: 100%;
             background-color: #4caf50;
         }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        #system_prompt, #user_prompt {
+            width: 100%;
+            height: 100px;
+            resize: vertical;
+        }
     </style>
 </head>
 <body>
     <h1>Try ChatGPT</h1>
-    <input type="text" id="open_ai_api" placeholder="OpenAI API Key">
-    <input type="text" id="user_prompt" placeholder="Enter your prompt" value="台北車站怎麼走">
+    <div class="input-group">
+        <label for="system_prompt">System Prompt:</label>
+        <textarea id="system_prompt">你是一個台灣ptt鄉民，你會使用鄉民的口氣來回應我，很不耐煩的口氣輕蔑，但還是會熱心的回答</textarea>
+    </div>
+    <div class="input-group">
+        <label for="user_prompt">User Prompt:</label>
+        <textarea id="user_prompt" placeholder="Enter your prompt">台北車站怎麼走</textarea>
+    </div>
+    <div class="input-group">
+        <label for="open_ai_api">API Key (僅存在瀏覽器localStorage，設定一個小時後自動清除，最好記得自己手動清除):</label>
+        <input type="text" id="open_ai_api" placeholder="OpenAI API Key">
+        <button onclick="saveApiKey()">Save</button>
+        <button onclick="resetApiKey()">Reset</button>
+    </div>
     <button onclick="sendRequest()">Send</button>
 
     <div id="progressBar">

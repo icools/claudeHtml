@@ -1,5 +1,36 @@
+// Load the API key from localStorage if available
+window.onload = function() {
+    const storedApiKey = localStorage.getItem('openai_api_key');
+    const expiry = localStorage.getItem('openai_api_key_expiry');
+
+    if (storedApiKey && expiry && new Date().getTime() < parseInt(expiry)) {
+        document.getElementById('open_ai_api').value = atob(storedApiKey);
+    } else {
+        localStorage.removeItem('openai_api_key');
+        localStorage.removeItem('openai_api_key_expiry');
+    }
+};
+
+function saveApiKey() {
+    const apiKey = document.getElementById('open_ai_api').value;
+    const encryptedKey = btoa(apiKey);
+    const expiryTime = new Date().getTime() + 3600 * 1000; // 1 hour
+
+    localStorage.setItem('openai_api_key', encryptedKey);
+    localStorage.setItem('openai_api_key_expiry', expiryTime.toString());
+    alert('API Key saved. It will expire in 1 hour.');
+}
+
+function resetApiKey() {
+    document.getElementById('open_ai_api').value = '';
+    localStorage.removeItem('openai_api_key');
+    localStorage.removeItem('openai_api_key_expiry');
+    alert('API Key reset.');
+}
+
 function sendRequest() {
     const openAiApi = document.getElementById('open_ai_api').value;
+    const systemPrompt = document.getElementById('system_prompt').value;
     const userPrompt = document.getElementById('user_prompt').value;
 
     if (!openAiApi || !userPrompt) {
@@ -37,7 +68,7 @@ function sendRequest() {
                     content: [
                         {
                             type: 'text',
-                            text: "你是一個台灣ptt鄉民，你會使用鄉民的口氣來回應我，很不耐煩的口氣輕蔑，但還是會熱心的回答"
+                            text: systemPrompt
                         }
                     ]
                 },
