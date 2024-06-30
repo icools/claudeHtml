@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國外遺失交通卡應對方案360度旋轉多層樹狀圖</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1a1a1a;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #canvas {
+            background-color: #1a1a1a;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Center of the canvas
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        // Main topic and subtopics with details
+        const mainTopic = "國外遺失交通卡";
+        const topics = [
+            {
+                name: "尋找原卡",
+                children: [
+                    { name: "優點", children: ["無需額外費用", "最快恢復使用"] },
+                    { name: "缺點", children: ["成功率低", "耗時"] },
+                    { name: "時間損失", children: ["幾小時到幾天"] },
+                    { name: "金錢損失", children: ["minimal"] }
+                ]
+            },
+            {
+                name: "報失並補辦新卡",
+                children: [
+                    { name: "優點", children: ["安全可靠", "避免卡被盜用"] },
+                    { name: "缺點", children: ["可能需要等待時間", "可能有補卡費用"] },
+                    { name: "時間損失", children: ["1-3個工作日"] },
+                    { name: "金錢損失", children: ["補卡費用", "原卡餘額可能凍結"] }
+                ]
+            },
+            {
+                name: "使用其他交通方式",
+                children: [
+                    { name: "優點", children: ["立即可用", "靈活性高"] },
+                    { name: "缺點", children: ["可能成本較高", "不熟悉當地系統"] },
+                    { name: "時間損失", children: ["minimal"] },
+                    { name: "金錢損失", children: ["單次票價可能較高", "無法享受月票等優惠"] }
+                ]
+            },
+            {
+                name: "購買臨時卡",
+                children: [
+                    { name: "優點", children: ["快速恢復使用", "適合短期停留"] },
+                    { name: "缺點", children: ["需要重新充值", "可能有額外費用"] },
+                    { name: "時間損失", children: ["幾分鐘到幾小時"] },
+                    { name: "金錢損失", children: ["臨時卡費用", "可能較貴的票價"] }
+                ]
+            },
+            {
+                name: "使用移動支付",
+                children: [
+                    { name: "優點", children: ["方便快捷", "無需實體卡"] },
+                    { name: "缺點", children: ["並非所有地方都支持", "可能需要本地手機號"] },
+                    { name: "時間損失", children: ["minimal if supported"] },
+                    { name: "金錢損失", children: ["可能有匯率或手續費"] }
+                ]
+            },
+            {
+                name: "尋求使館協助",
+                children: [
+                    { name: "優點", children: ["官方渠道可靠", "可能提供緊急援助"] },
+                    { name: "缺點", children: ["流程可能較慢", "非緊急情況可能不適用"] },
+                    { name: "時間損失", children: ["幾小時到幾天"] },
+                    { name: "金錢損失", children: ["minimal", "可能有相關手續費"] }
+                ]
+            }
+        ];
+
+        // Colors
+        const colors = {
+            background: "#1a1a1a",
+            mainTopic: "#ffffff",
+            level1: "#e0e0e0",
+            level2: "#b0b0b0",
+            level3: "#808080",
+            line: "#4a4a4a"
+        };
+
+        let rotationAngle = 0;
+        const rotationSpeed = 0.0005; // Adjust this value to change rotation speed
+
+        // Draw function
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(rotationAngle);
+            ctx.translate(-centerX, -centerY);
+
+            // Draw main topic
+            drawNode(mainTopic, centerX, centerY, 0, 24, colors.mainTopic);
+
+            // Draw subtopics and their children
+            const radius1 = Math.min(canvas.width, canvas.height) * 0.35;
+            const radius2 = radius1 * 0.7;
+            const radius3 = radius2 * 0.8;
+
+            for (let i = 0; i < topics.length; i++) {
+                const angle1 = (i / topics.length) * Math.PI * 2 - Math.PI / 2;
+                const x1 = centerX + Math.cos(angle1) * radius1;
+                const y1 = centerY + Math.sin(angle1) * radius1;
+
+                drawNode(topics[i].name, x1, y1, angle1, 16, colors.level1);
+                drawLine(centerX, centerY, x1, y1, colors.line);
+
+                for (let j = 0; j < topics[i].children.length; j++) {
+                    const angle2 = angle1 + (j - 1.5) * 0.3;
+                    const x2 = x1 + Math.cos(angle2) * radius2 * 0.5;
+                    const y2 = y1 + Math.sin(angle2) * radius2 * 0.5;
+
+                    drawNode(topics[i].children[j].name, x2, y2, angle2, 14, colors.level2);
+                    drawLine(x1, y1, x2, y2, colors.line);
+
+                    for (let k = 0; k < topics[i].children[j].children.length; k++) {
+                        const angle3 = angle2 + (k - 0.5) * 0.2;
+                        const x3 = x2 + Math.cos(angle3) * radius3 * 0.4;
+                        const y3 = y2 + Math.sin(angle3) * radius3 * 0.4;
+
+                        drawNode(topics[i].children[j].children[k], x3, y3, angle3, 12, colors.level3);
+                        drawLine(x2, y2, x3, y3, colors.line);
+                    }
+                }
+            }
+
+            ctx.restore();
+
+            rotationAngle += rotationSpeed;
+            requestAnimationFrame(draw);
+        }
+
+        function drawNode(text, x, y, angle, fontSize, color) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle + Math.PI / 2);
+            ctx.fillStyle = color;
+            ctx.font = `${fontSize}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(text, 0, 0);
+            ctx.restore();
+        }
+
+        function drawLine(x1, y1, x2, y2, color) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        // Initial draw
+        draw();
+
+        // Redraw on window resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
