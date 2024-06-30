@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣人口互動地圖</title>
+    <style>
+        body, html {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+        }
+        #map {
+            width: 100%;
+            height: 90vh;
+        }
+        #controls {
+            padding: 10px;
+            background-color: #333;
+            color: white;
+            text-align: center;
+        }
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px;
+            border-radius: 3px;
+            pointer-events: none;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div id="controls">
+        <h1>台灣人口互動地圖</h1>
+        <p>探索不同縣市的人口數據</p>
+    </div>
+    <div id="map"></div>
+    <div class="tooltip" style="opacity:0;"></div>
+    <script>
+        const width = document.getElementById('map').clientWidth;
+        const height = document.getElementById('map').clientHeight;
+
+        const svg = d3.select("#map").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const tooltip = d3.select(".tooltip");
+
+        const projection = d3.geoMercator()
+            .center([121, 24])
+            .scale(5000)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
+
+        const colorScale = d3.scaleSequential(d3.interpolateBlues);
+
+        // Fetch Taiwan map and population data
+        Promise.all([
+            d3.json("https://raw.githubusercontent.com/deldersveld/topojson/master/countries/taiwan/taiwan-counties.json"),
+            d3.json("https://api.example.com/taiwan_population_data") // replace with actual API
+        ]).then(([mapData, populationData]) => {
+            const populationById = {};
+            populationData.forEach(d => { populationById[d.id] = +d.population; });
+            
+            colorScale.domain([0, d3.max(populationData, d => d.population)]);
+
+            svg.append("g")
+                .selectAll("path")
+                .data(topojson.feature(mapData, mapData.objects.layer1).features)
+                .enter().append("path")
+                .attr("d", path)
+                .attr("fill", d => colorScale(populationById[d.properties.COUNTYID] || 0))
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1)
+                .on("mouseover", (event, d) => {
+                    tooltip.transition().duration(200).style("opacity", .9);
+                    tooltip.html(`<strong>${d.properties.COUNTYNAME}</strong><br>人口: ${populationById[d.properties.COUNTYID] || 'N/A'}`)
+                        .style("left", (event.pageX + 5) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", () => {
+                    tooltip.transition().duration(500).style("opacity", 0);
+                });
+        }).catch(error => {
+            console.error("Error loading data: ", error);
+        });
+    </script>
+</body>
+</html>

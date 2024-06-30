@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>異世邂逅</title>
+  <style>
+    body {
+      background-color: #0D021A;
+      font-family: 'Courier New', Courier, monospace;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+    }
+
+    #container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      perspective: 1000px;
+    }
+
+    .particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #A020F0;
+      opacity: 0;
+      animation: particleAnimation 5s linear infinite;
+    }
+
+    @keyframes particleAnimation {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 0, 0);
+      }
+
+      50% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate3d(500px, -300px, -500px);
+      }
+    }
+
+    #alienContainer {
+      position: relative;
+      width: 200px;
+      height: 300px;
+      margin: 50px auto;
+      transform-style: preserve-3d;
+      animation: rotateAnimation 10s linear infinite;
+    }
+
+    #alienContainer:hover {
+      animation-play-state: paused;
+    }
+
+    @keyframes rotateAnimation {
+      from {
+        transform: rotateY(0deg);
+      }
+
+      to {
+        transform: rotateY(360deg);
+      }
+    }
+
+    .alienPart {
+      position: absolute;
+      background-color: #4B0082;
+      transform-style: preserve-3d;
+    }
+
+    #head {
+      width: 60px;
+      height: 80px;
+      border-radius: 50% 50% 0 0;
+      top: 0;
+      left: 70px;
+    }
+
+    #body {
+      width: 80px;
+      height: 120px;
+      top: 80px;
+      left: 60px;
+    }
+
+    #arm1 {
+      width: 15px;
+      height: 80px;
+      top: 90px;
+      left: 20px;
+      transform-origin: top left;
+      transform: rotate(-30deg);
+      animation: waveAnimation 2s linear infinite alternate;
+    }
+
+    #arm2 {
+      width: 15px;
+      height: 80px;
+      top: 90px;
+      right: 20px;
+      transform-origin: top right;
+      transform: rotate(30deg);
+      animation: waveAnimation 2s linear infinite alternate-reverse;
+    }
+
+    @keyframes waveAnimation {
+      from {
+        transform: rotate(-30deg);
+      }
+
+      to {
+        transform: rotate(0deg);
+      }
+    }
+
+    #leg1,
+    #leg2 {
+      width: 20px;
+      height: 100px;
+      bottom: 0;
+      transform-origin: top;
+    }
+
+    #leg1 {
+      left: 50px;
+      animation: walkAnimation 2s linear infinite;
+    }
+
+    #leg2 {
+      left: 90px;
+      animation: walkAnimation 2s linear infinite alternate;
+    }
+
+    @keyframes walkAnimation {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(30deg);
+      }
+    }
+
+    #message {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-size: 14px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="alienContainer">
+      <div class="alienPart" id="head"></div>
+      <div class="alienPart" id="body"></div>
+      <div class="alienPart" id="arm1"></div>
+      <div class="alienPart" id="arm2"></div>
+      <div class="alienPart" id="leg1"></div>
+      <div class="alienPart" id="leg2"></div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const container = document.getElementById('container');
+      for (let i = 0; i < 100; i++) {
+        const particle = document.createElement('div');
+        particle.classList.add('particle');
+        particle.style.left = Math.random() * 100 + 'vw';
+        particle.style.top = Math.random() * 100 + 'vh';
+        particle.style.animationDelay = Math.random() * 5 + 's';
+        container.appendChild(particle);
+      }
+    });
+  </script>
+
+  <div id="message">懸停鼠標以暫停時空扭曲</div>
+</body>
+</html>

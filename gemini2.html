@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>星際迷航：與未知的邂逅</title>
+<style>
+body {
+  background-color: black;
+  overflow: hidden;
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  color: white;
+}
+
+#gameContainer {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#score {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 20px;
+  z-index: 10;
+}
+
+.star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background-color: white;
+  opacity: 0;
+  animation: starTwinkle 2s infinite alternate;
+}
+
+@keyframes starTwinkle {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.asteroid {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  background-image: url('https://www.transparenttextures.com/patterns/asfalt-light.png'); /* 替換成你想要的隕石圖片 */
+  background-size: cover;
+  border-radius: 50%;
+  animation: asteroidMove 5s linear infinite;
+}
+
+@keyframes asteroidMove {
+  0% { transform: translate(110vw, -10vh); }
+  100% { transform: translate(-10vw, 110vh); }
+}
+
+#spaceship {
+  position: absolute;
+  width: 50px;
+  height: 30px;
+  background-color: #00FF00;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.laser {
+  position: absolute;
+  width: 3px;
+  height: 10px;
+  background-color: red;
+  animation: laserShoot 0.5s linear forwards;
+}
+
+@keyframes laserShoot {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-100vh); opacity: 0; }
+}
+
+#alien {
+  position: absolute;
+  width: 80px;
+  height: 60px;
+  background-color: purple;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 30px;
+  color: white;
+  animation: alienMove 3s linear infinite alternate;
+}
+
+@keyframes alienMove {
+  0% { transform: translate(-50%, 20px); }
+  100% { transform: translate(-50%, 60px); }
+}
+</style>
+</head>
+<body>
+<div id="gameContainer">
+  <div id="score">得分：0</div>
+  <div id="spaceship"></div>
+  <div id="alien">👽</div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const gameContainer = document.getElementById('gameContainer');
+    const spaceship = document.getElementById('spaceship');
+    const scoreElement = document.getElementById('score');
+    let score = 0;
+    let gameSpeed = 20; // 控制遊戲速度
+    let alienShootingInterval;
+
+    // 生成星星背景
+    for (let i = 0; i < 100; i++) {
+      const star = document.createElement('div');
+      star.classList.add('star');
+      star.style.left = Math.random() * 100 + 'vw';
+      star.style.top = Math.random() * 100 + 'vh';
+      star.style.animationDelay = Math.random() * 2 + 's';
+      gameContainer.appendChild(star);
+    }
+
+    // 生成隕石
+    setInterval(() => {
+      const asteroid = document.createElement('div');
+      asteroid.classList.add('asteroid');
+      const asteroidSize = Math.random() * 30 + 20; 
+      asteroid.style.width = asteroidSize + 'px';
+      asteroid.style.height = asteroidSize + 'px';
+      asteroid.style.top = Math.random() * -10 + 'vh'; 
+      const startX = Math.random() > 0.5 ? -10 : 110; // 隕石從左邊或右邊出現
+      asteroid.style.left = startX + 'vw';
+      const duration = Math.random() * 5 + 3; // 隕石速度
+      asteroid.style.animationDuration = duration + 's';
+      gameContainer.appendChild(asteroid);
+      setTimeout(() => asteroid.remove(), duration * 1000);
+    }, 1000 / gameSpeed);
+
+    // 飛船移動
+    document.addEventListener('keydown', function(event) {
+      const left = parseInt(getComputedStyle(spaceship).left);
+      if (event.key === 'ArrowLeft' && left > 0) {
+        spaceship.style.left = (left - 20) + 'px';
+      } else if (event.key === 'ArrowRight' && left < window.innerWidth - 50) {
+        spaceship.style.left = (left + 20) + 'px';
+      } else if (event.key === ' '){ // 空白鍵發射雷射
+        shootLaser();
+      }
+    });
+
+    // 發射雷射
+    function shootLaser() {
+      const laser = document.createElement('div');
+      laser.classList.add('laser');
+      laser.style.left = spaceship.offsetLeft + spaceship.offsetWidth / 2 - 1.5 + 'px'; 
+      laser.style.bottom = spaceship.offsetTop + spaceship.offsetHeight + 'px'; 
+      gameContainer.appendChild(laser);
+      setTimeout(() => laser.remove(), 500); // 0.5 秒後移除雷射
+      checkLaserHit(laser); 
+    }
+
+    // 檢查雷射是否擊中外星人
+    function checkLaserHit(laser) {
+      const alien = document.getElementById('alien');
+      const laserRect = laser.getBoundingClientRect();
+      const alienRect = alien.getBoundingClientRect();
+
+      if (laserRect.left < alienRect.right &&
+          laserRect.right > alienRect.left &&
+          laserRect.top < alienRect.bottom &&
+          laserRect.bottom > alienRect.top) {
+        score++;
+        scoreElement.innerText = '得分：' + score;
+        laser.remove();
+        generateNewAlien();
+      }
+    }
+
+    // 生成新的外星人
+    function generateNewAlien() {
+      const alien = document.getElementById('alien');
+      alien.style.top = Math.random() * 30 + 'vh';
+      alien.style.left = Math.random() * 80 + 10 + 'vw'; 
+    }
+
+    // 外星人發射雷射
+    alienShootingInterval = setInterval(() => {
+      const alienLaser = document.createElement('div');
+      alienLaser.classList.add('laser');
+      alienLaser.style.backgroundColor = 'blue';
+      alienLaser.style.left = alien.offsetLeft + alien.offsetWidth / 2 - 1.5 + 'px';
+      alienLaser.style.top = alien.offsetTop + alien.offsetHeight + 'px';
+      alienLaser.style.animation = 'laserShoot 1s linear forwards';
+      gameContainer.appendChild(alienLaser);
+      setTimeout(() => alienLaser.remove(), 1000);
+    }, 2000 / gameSpeed); 
+  });
+</script>
+</body>
+</html>
