@@ -81,10 +81,12 @@ function copyToClipboard(text,showAlert = false) {
 }
 
 function createCopyButton(text,showAlert = false) {
-    return `<button onclick="copyToClipboard('${text}',${showAlert})">Copy</button>`;
+    return `<button style="padding: 5px;" onclick="copyToClipboard('${text}',${showAlert})">Copy</button>`;
 }
 
 function createGPROUTE(gproute) {
+    const startLatLng = twd97ToLatLng(gproute.start.split(',')[0], gproute.start.split(',')[1]);
+    const endLatLng = twd97ToLatLng(gproute.end.split(',')[0], gproute.end.split(',')[1]);
     return `
         <h1>GPROUTE</h1>    
         <table >
@@ -94,14 +96,18 @@ function createGPROUTE(gproute) {
             </tr>
             <tr>
                 <td style="background-color: lightgray;">起點:</td>
-                <td>${gproute.start}${createCopyButton(gproute.start)}</td>
+                <td>${gproute.start}${createCopyButton(gproute.start)}${createMapButton(startLatLng.lat, startLatLng.lng)}</td>
             </tr>
             <tr>
                 <td style="background-color: lightgray;">終點:</td>
-                <td>${gproute.end} ${createCopyButton(gproute.end)}</td>
+                <td>${gproute.end} ${createCopyButton(gproute.end)}${createMapButton(endLatLng.lat, endLatLng.lng)}</td>
             </tr>
         </table>
     `;
+}
+
+function createMapButton(lat,lon) {
+    return `<button style="padding: 5px;" onclick="openGoogleMap(${lat},${lon})">Map</button>`;
 }
 
 function createGPRPRESULT(gprpresult) {
@@ -148,6 +154,59 @@ function createGPVD(gpvd) {
         </tr>
     </table>
 `;
+}
+
+function twd97ToLatLng(x,y) {
+    const a = 6378137.0;
+    const b = 6356752.314245;
+    const lng0 = 121 * Math.PI / 180;
+    const k0 = 0.9999;
+    const dx = 250000;
+    const dy = 0;
+    const e = Math.pow((1 - Math.pow(b, 2) / Math.pow(a, 2)), 0.5);
+    x -= dx;
+    y -= dy;
+    const M = y / k0;
+    const mu = M / (a * (1 - Math.pow(e, 2) / 4 - 3 * Math.pow(e, 4) / 64 - 5 * Math.pow(e, 6) / 256));
+    const e1 = (1 - Math.pow((1 - Math.pow(e, 2)), 0.5)) / (1 + Math.pow((1 - Math.pow(e, 2)), 0.5));
+    const J1 = (3 * e1 / 2 - 27 * Math.pow(e1, 3) / 32);
+    const J2 = (21 * Math.pow(e1, 2) / 16 - 55 * Math.pow(e1, 4) / 32);
+    const J3 = (151 * Math.pow(e1, 3) / 96);
+    const J4 = (1097 * Math.pow(e1, 4) / 512);
+    const fp = mu + J1 * Math.sin(2 * mu) + J2 * Math.sin(4 * mu) + J3 * Math.sin(6 * mu) + J4 * Math.sin(8 * mu);
+
+    const e2 = Math.pow((e * a / b), 2);
+    const C1 = Math.pow(e2 * Math.cos(fp), 2);
+    const T1 = Math.pow(Math.tan(fp), 2);
+    const R1 = a * (1 - Math.pow(e, 2)) / Math.pow((1 - Math.pow(e, 2) * Math.pow(Math.sin(fp), 2)), (3 / 2));
+    const N1 = a / Math.pow((1 - Math.pow(e, 2) * Math.pow(Math.sin(fp), 2)), 0.5);
+
+    const D = x / (N1 * k0);
+
+    // Calculate latitude in radians
+    const Q1 = N1 * Math.tan(fp) / R1;
+    const Q2 = (Math.pow(D, 2) / 2);
+    const Q3 = (5 + 3 * T1 + 10 * C1 - 4 * Math.pow(C1, 2) - 9 * e2) * Math.pow(D, 4) / 24;
+    const Q4 = (61 + 90 * T1 + 298 * C1 + 45 * Math.pow(T1, 2) - 3 * Math.pow(C1, 2) - 252 * e2) * Math.pow(D, 6) / 720;
+    const lat = fp - Q1 * (Q2 - Q3 + Q4);
+
+    // Calculate longitude in radians
+    const Q5 = D;
+    const Q6 = (1 + 2 * T1 + C1) * Math.pow(D, 3) / 6;
+    const Q7 = (5 - 2 * C1 + 28 * T1 - 3 * Math.pow(C1, 2) + 8 * e2 + 24 * Math.pow(T1, 2)) * Math.pow(D, 5) / 120;
+    const lng = lng0 + (Q5 - Q6 + Q7) / Math.cos(fp);
+
+    // Convert radians to degrees
+    const latInDegrees = lat * 180 / Math.PI;
+    const lngInDegrees = lng * 180 / Math.PI;
+
+    // Return the result
+    return { lat: latInDegrees, lng: lngInDegrees };
+}
+
+function openGoogleMap(lat,lon) {
+    const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+    window.open(url, '_blank');
 }
 
 function createLocation(location) {
