@@ -54,8 +54,15 @@ class GPROUTEPATH extends KwLog {
     }
 }
 
-//GPVDDATA
 class GPVD extends KwLog {
+    constructor(raw) {
+        super(raw);
+        const parts = raw.split(',');
+        this.base64 = parts[1];
+    }
+}
+
+class GPLOCATION extends KwLog {
     constructor(raw) {
         super(raw);
         const parts = raw.split(',');
@@ -143,6 +150,22 @@ function createGPVD(gpvd) {
 `;
 }
 
+function createLocation(location) {
+    const base64 = location.base64;
+    const maxLength = 30;
+    const truncatedBase64 = base64.length > maxLength ? base64.substring(0, maxLength) + "..." : base64;
+    const base64_single_line = `${truncatedBase64} (Length: ${base64.length})`;
+    return `
+    <h1>GPLocation</h1>
+    <table>
+        <tr><th>Base64</th></tr>
+        <tr>
+            <td>${base64_single_line}${createCopyButton(base64,true)}</td>
+        </tr>
+    </table>
+`;
+}
+
 // GPLOCATION
 
 function processFile(content) {
@@ -175,6 +198,9 @@ function processFile(content) {
         } else if(line.startsWith('$GPVDDATA')) {
             const gpvd = new GPVD(line);
             logEntries.innerHTML += createGPVD(gpvd);
+        } else if(line.startsWith('$GPLOCATION')) {
+            const gplocation = new GPLOCATION(line);
+            logEntries.innerHTML += createLocation(gplocation);
         }
     });
 }
@@ -232,4 +258,6 @@ function test() {
     console.assert(gpRoutePath.polyline === 'uc_xCcw~dVEg@tJjA|AHb@?n@Kp@GKeA~AOjB]}Bg@{@WiKoFkFcB', 'Test failed');
     console.assert(gpRoutePath.length === `4286`, 'Test failed');
     console.log('Test GpRoutePath passed[O]');
+
+    const gpLocation = new GPLOCATION("$GPLOCATION,IEsA7CTExHdGAFvn3ArXIp5JZoC2UNWt8=");
 }
