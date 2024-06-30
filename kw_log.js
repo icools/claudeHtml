@@ -63,16 +63,35 @@ class GPVD extends KwLog {
     }
 }
 
+function copyToClipboard(text,showAlert = false) {
+    navigator.clipboard.writeText(text).then(() => {
+        if(showAlert) {
+            alert('已複製到剪貼簿');
+        }
+    }, (err) => {
+        console.error('複製失敗', err);
+    });
+}
+
+function createCopyButton(text,showAlert = false) {
+    return `<button onclick="copyToClipboard('${text}',${showAlert})">Copy</button>`;
+}
 
 function createGPROUTE(gproute) {
     return `
-        <h1>GPROUTE</h1>
-        <table>
-            <tr><th>車種</th><th>起點</th><th>終點</th></tr>
+        <h1>GPROUTE</h1>    
+        <table >
             <tr>
-                <td>${gproute.vehicle}</td>
-                <td>${gproute.start}</td>
-                <td>${gproute.end}</td>
+                <td style="background-color: lightgray;">車種:</td>
+                <td>${gproute.vehicle}${createCopyButton(gproute.vehicle)}</td>
+            </tr>
+            <tr>
+                <td style="background-color: lightgray;">起點:</td>
+                <td>${gproute.start}${createCopyButton(gproute.start)}</td>
+            </tr>
+            <tr>
+                <td style="background-color: lightgray;">終點:</td>
+                <td>${gproute.end} ${createCopyButton(gproute.end)}</td>
             </tr>
         </table>
     `;
@@ -91,21 +110,40 @@ function createGPRPRESULT(gprpresult) {
     `;
 }
 
-function createGPROUTEPATH(gproutepath, index) {
-    const mapContainerId = `map${index}`;
+function createGPROUTEPATH(gproutepath) {
+    //const mapContainerId = `map${index}`;
     return `
         <h1>GPROUTEPATH</h1>
-        <p>Path: ${gproutepath.polyline}</p>
-        <div id="${mapContainerId}" style="height: 100px; width: 800px;"></div>
+        <table>
+            <tr><th>Path</th><th>Length</th></tr>
+            <tr>
+                <td>${gproutepath.polyline}${createCopyButton(gproutepath.polyline,true)}</td>
+            </tr>
+            <tr>
+                <td>${gproutepath.length}</td>
+            </tr>
+        </table>
     `;
+    //<div id="${mapContainerId}" style="height: 100px; width: 800px;"></div>
 }
 
 function createGPVD(gpvd) {
+    const base64 = gpvd.base64;
+    const maxLength = 30;
+    const truncatedBase64 = base64.length > maxLength ? base64.substring(0, maxLength) + "..." : base64;
+    const base64_single_line = `${truncatedBase64} (Length: ${base64.length})`;
     return `
-        <h1>GPVD</h1>
-        <p>Base64: ${gpvd.base64}</p>
-    `;
+    <h1>GPVD</h1>
+    <table>
+        <tr><th>Base64</th></tr>
+        <tr>
+            <td>${base64_single_line}${createCopyButton(base64,true)}</td>
+        </tr>
+    </table>
+`;
 }
+
+// GPLOCATION
 
 function processFile(content) {
     const lines = content.split('\n');
@@ -118,22 +156,22 @@ function processFile(content) {
             logEntries.innerHTML += createGPROUTE(gproute);
         } else if (line.startsWith('$GPREROUTE')) {
             const gpReroute = new GPREROUTE(line);
-            logEntries.innerHTML += createGPREROUTE(gpReroute);
+            logEntries.innerHTML += createGPROUTE(gpReroute);
         } else if (line.startsWith('$GPRPRESULT')) {
             const gprpresult = new GPRPRESULT(line);
             logEntries.innerHTML += createGPRPRESULT(gprpresult);
         } else if (line.startsWith('$GPROUTEPATH')) {
             const gproutepath = new GPROUTEPATH(line);
-            logEntries.innerHTML += createGPROUTEPATH(gproutepath, index);
-            setTimeout(() => {
-                const map = L.map(`map${index}`).setView([25.034, 121.564], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(map);
-                const decodedPath = decodePolyline(gproutepath.polyline);
-                L.polyline(decodedPath, { color: 'blue' }).addTo(map);
-                map.fitBounds(L.polyline(decodedPath).getBounds());
-            }, 0);
+            logEntries.innerHTML += createGPROUTEPATH(gproutepath);
+            // setTimeout(() => {
+            //     const map = L.map(`map${index}`).setView([25.034, 121.564], 13);
+            //     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            //         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            //     }).addTo(map);
+            //     const decodedPath = decodePolyline(gproutepath.polyline);
+            //     L.polyline(decodedPath, { color: 'blue' }).addTo(map);
+            //     map.fitBounds(L.polyline(decodedPath).getBounds());
+            // }, 0);
         } else if(line.startsWith('$GPVDDATA')) {
             const gpvd = new GPVD(line);
             logEntries.innerHTML += createGPVD(gpvd);
