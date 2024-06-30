@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>國外遺失交通卡應對方案360度多層樹狀圖</title>
+    <title>國外遺失交通卡應對方案360度旋轉多層樹狀圖</title>
     <style>
         body {
             margin: 0;
@@ -104,10 +104,18 @@
             line: "#4a4a4a"
         };
 
+        let rotationAngle = 0;
+        const rotationSpeed = 0.0005; // Adjust this value to change rotation speed
+
         // Draw function
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(rotationAngle);
+            ctx.translate(-centerX, -centerY);
+
             // Draw main topic
             drawNode(mainTopic, centerX, centerY, 0, 24, colors.mainTopic);
 
@@ -142,6 +150,11 @@
                     }
                 }
             }
+
+            ctx.restore();
+
+            rotationAngle += rotationSpeed;
+            requestAnimationFrame(draw);
         }
 
         function drawNode(text, x, y, angle, fontSize, color) {
@@ -172,7 +185,6 @@
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            draw();
         });
     </script>
 </body>
