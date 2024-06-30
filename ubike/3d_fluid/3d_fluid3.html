@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complex 3D Particle System</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Click to create attractors. Press 'R' to reset.</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+    <script>
+        let scene, camera, renderer, points, attractors = [];
+        let data = [];
+        const numPoints = 5000;
+        const maxRange = 100;
+
+        const params = {
+            rotationSpeed: 0.0005,
+            flowSpeed: 0.2,
+            attractorStrength: 0.1,
+            repelStrength: 0.05,
+            colorChangeSpeed: 0.01,
+            particleSize: 0.5,
+            trailEffect: 0.95
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 150;
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Generate initial data
+            for (let i = 0; i < numPoints; i++) {
+                data.push({
+                    x: Math.random() * maxRange - maxRange / 2,
+                    y: Math.random() * maxRange - maxRange / 2,
+                    z: Math.random() * maxRange - maxRange / 2,
+                    vx: Math.random() - 0.5,
+                    vy: Math.random() - 0.5,
+                    vz: Math.random() - 0.5,
+                    hue: Math.random()
+                });
+            }
+
+            createPoints();
+            createAxes();
+            createGUI();
+
+            window.addEventListener('resize', onWindowResize, false);
+            document.addEventListener('click', createAttractor);
+            document.addEventListener('keydown', onKeyDown);
+        }
+
+        function createPoints() {
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(numPoints * 3);
+            const colors = new Float32Array(numPoints * 3);
+
+            for (let i = 0; i < numPoints; i++) {
+                const i3 = i * 3;
+                positions[i3] = data[i].x;
+                positions[i3 + 1] = data[i].y;
+                positions[i3 + 2] = data[i].z;
+
+                const color = new THREE.Color();
+                color.setHSL(data[i].hue, 1, 0.5);
+                colors[i3] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({ 
+                size: params.particleSize, 
+                vertexColors: true, 
+                blending: THREE.AdditiveBlending,
+                transparent: true
+            });
+            points = new THREE.Points(geometry, material);
+            scene.add(points);
+        }
+
+        function createAxes() {
+            const axesHelper = new THREE.AxesHelper(maxRange / 2);
+            scene.add(axesHelper);
+        }
+
+        function createGUI() {
+            const gui = new dat.GUI();
+            gui.add(params, 'rotationSpeed', 0, 0.01);
+            gui.add(params, 'flowSpeed', 0, 1);
+            gui.add(params, 'attractorStrength', 0, 0.5);
+            gui.add(params, 'repelStrength', 0, 0.2);
+            gui.add(params, 'colorChangeSpeed', 0, 0.1);
+            gui.add(params, 'particleSize', 0.1, 2).onChange(() => {
+                points.material.size = params.particleSize;
+            });
+            gui.add(params, 'trailEffect', 0.8, 1);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createAttractor(event) {
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersection = new THREE.Vector3();
+            raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), intersection);
+
+            attractors.push({
+                x: intersection.x,
+                y: intersection.y,
+                z: intersection.z,
+                strength: Math.random() > 0.5 ? params.attractorStrength : -params.repelStrength
+            });
+
+            // Visualize attractor
+            const geometry = new THREE.SphereGeometry(1, 32, 32);
+            const material = new THREE.MeshBasicMaterial({ color: attractors[attractors.length - 1].strength > 0 ? 0x00ff00 : 0xff0000 });
+            const sphere = new THREE.Mesh(geometry, material);
+            sphere.position.copy(intersection);
+            scene.add(sphere);
+        }
+
+        function onKeyDown(event) {
+            if (event.key === 'r' || event.key === 'R') {
+                // Reset attractors
+                attractors = [];
+                scene.children = scene.children.filter(child => child instanceof THREE.Points || child instanceof THREE.AxesHelper);
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Rotate the entire scene
+            scene.rotation.y += params.rotationSpeed;
+
+            // Update point positions
+            const positions = points.geometry.attributes.position.array;
+            const colors = points.geometry.attributes.color.array;
+
+            for (let i = 0; i < numPoints; i++) {
+                const i3 = i * 3;
+                
+                // Apply forces from attractors
+                for (let attractor of attractors) {
+                    const dx = attractor.x - data[i].x;
+                    const dy = attractor.y - data[i].y;
+                    const dz = attractor.z - data[i].z;
+                    const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    const force = attractor.strength / (distance * distance + 1);
+                    data[i].vx += dx * force;
+                    data[i].vy += dy * force;
+                    data[i].vz += dz * force;
+                }
+
+                // Apply velocity to position
+                data[i].x += data[i].vx * params.flowSpeed;
+                data[i].y += data[i].vy * params.flowSpeed;
+                data[i].z += data[i].vz * params.flowSpeed;
+
+                // Damping
+                data[i].vx *= 0.99;
+                data[i].vy *= 0.99;
+                data[i].vz *= 0.99;
+
+                // Wrap around boundaries
+                data[i].x = (data[i].x + maxRange / 2) % maxRange - maxRange / 2;
+                data[i].y = (data[i].y + maxRange / 2) % maxRange - maxRange / 2;
+                data[i].z = (data[i].z + maxRange / 2) % maxRange - maxRange / 2;
+
+                positions[i3] = data[i].x;
+                positions[i3 + 1] = data[i].y;
+                positions[i3 + 2] = data[i].z;
+
+                // Update color
+                data[i].hue += params.colorChangeSpeed;
+                if (data[i].hue > 1) data[i].hue -= 1;
+
+                const color = new THREE.Color();
+                color.setHSL(data[i].hue, 1, 0.5);
+                colors[i3] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+            }
+
+            points.geometry.attributes.position.needsUpdate = true;
+            points.geometry.attributes.color.needsUpdate = true;
+
+            // Trail effect
+            renderer.autoClearColor = false;
+            const trailMesh = new THREE.Mesh(
+                new THREE.PlaneGeometry(2, 2),
+                new THREE.MeshBasicMaterial({
+                    color: 0x000000,
+                    transparent: true,
+                    opacity: 1 - params.trailEffect
+                })
+            );
+            trailMesh.position.z = -1;
+            scene.add(trailMesh);
+            renderer.render(scene, camera);
+            scene.remove(trailMesh);
+
+            renderer.autoClearColor = true;
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>

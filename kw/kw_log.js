@@ -225,8 +225,6 @@ function createLocation(location) {
 `;
 }
 
-// GPLOCATION
-
 function processFile(content) {
     const lines = content.split('\n');
     const logEntries = document.getElementById('logEntries');
