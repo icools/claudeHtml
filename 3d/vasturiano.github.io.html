@@ -10,64 +10,9 @@
 
   <script type="importmap">{ "imports": { "three": "https://unpkg.com/three/build/three.module.js" }}</script>
   <script src="vasturiano.js"></script>
+  <script src="data.js"></script>
   <script type="module">
     import SpriteText from "https://unpkg.com/three-spritetext/dist/three-spritetext.mjs";
-
-    const jsonNew = {
-  "nodes": [
-    {"id": "Taiwan", "group": 0},
-    {"id": "Taipei", "group": 1},
-    {"id": "NewTaipei", "group": 1},
-    {"id": "Taichung", "group": 1},
-    {"id": "Tainan", "group": 1},
-    {"id": "Kaohsiung", "group": 1},
-    {"id": "Zhongzheng", "group": 2},
-    {"id": "Daan", "group": 2},
-    {"id": "Banqiao", "group": 2},
-    {"id": "Xinzhuang", "group": 2},
-    {"id": "Central", "group": 2},
-    {"id": "Xitun", "group": 2},
-    {"id": "Anping", "group": 2},
-    {"id": "East", "group": 2},
-    {"id": "Fengshan", "group": 2},
-    {"id": "Sanmin", "group": 2},
-    {"id": "Yongkang", "group": 3},
-    {"id": "Dongmen", "group": 3},
-    {"id": "Heping", "group": 3},
-    {"id": "Zhonghua", "group": 3},
-    {"id": "Qiaozhong", "group": 3},
-    {"id": "Gongchen", "group": 3},
-    {"id": "Tungyuan", "group": 3},
-    {"id": "Longhua", "group": 3}
-  ],
-  "links": [
-    {"source": "Taiwan", "target": "Taipei", "value": 10},
-    {"source": "Taiwan", "target": "NewTaipei", "value": 10},
-    {"source": "Taiwan", "target": "Taichung", "value": 10},
-    {"source": "Taiwan", "target": "Tainan", "value": 10},
-    {"source": "Taiwan", "target": "Kaohsiung", "value": 10},
-    {"source": "Taipei", "target": "Zhongzheng", "value": 8},
-    {"source": "Taipei", "target": "Daan", "value": 8},
-    {"source": "NewTaipei", "target": "Banqiao", "value": 8},
-    {"source": "NewTaipei", "target": "Xinzhuang", "value": 8},
-    {"source": "Taichung", "target": "Central", "value": 8},
-    {"source": "Taichung", "target": "Xitun", "value": 8},
-    {"source": "Tainan", "target": "Anping", "value": 8},
-    {"source": "Tainan", "target": "East", "value": 8},
-    {"source": "Kaohsiung", "target": "Fengshan", "value": 8},
-    {"source": "Kaohsiung", "target": "Sanmin", "value": 8},
-    {"source": "Zhongzheng", "target": "Yongkang", "value": 6},
-    {"source": "Zhongzheng", "target": "Dongmen", "value": 6},
-    {"source": "Daan", "target": "Heping", "value": 6},
-    {"source": "Daan", "target": "Zhonghua", "value": 6},
-    {"source": "Banqiao", "target": "Qiaozhong", "value": 6},
-    {"source": "Banqiao", "target": "Gongchen", "value": 6},
-    {"source": "Xinzhuang", "target": "Tungyuan", "value": 6},
-    {"source": "Xinzhuang", "target": "Longhua", "value": 6}
-  ]
-}
-
-
     const blob1 = new Blob([JSON.stringify(jsonNew, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob1);
     const Graph = ForceGraph3D()

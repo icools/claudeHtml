@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>16x16 Iframes</title>
+    <style>
+        body {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        iframe {
+            width: 100%;
+            height: 400px; /* 可以根據需要調整高度 */
+        }
+    </style>
+</head>
+<body>
+    <script>
+        function getRandomId() {
+            return Math.floor(Math.random() * 250).toString().padStart(3, '0');
+        }
+
+        for (let i = 0; i < 2 * 2; i++) {
+            const iframe = document.createElement('iframe');
+            const randomId = getRandomId();
+            iframe.src = `https://hls.bote.gov.taipei/live/index.html?id=${randomId}`;
+            document.body.appendChild(iframe);
+        }
+    </script>
+</body>
+</html>

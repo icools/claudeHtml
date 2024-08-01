@@ -1,0 +1,75 @@
+```html
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Fireworks</title>
+      <style>
+        body {
+          background-color: black;
+        }
+    
+        .firework {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background-color: red;
+          animation: firework 2s infinite;
+        }
+    
+        @keyframes firework {
+          0% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+    
+          50% {
+            opacity: 0.5;
+            transform: translate(-50%, -50%) scale(2);
+          }
+    
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(3);
+          }
+        }
+    
+        .button {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          padding: 10px 20px;
+          border: 1px solid white;
+          border-radius: 5px;
+          background-color: black;
+          color: white;
+          cursor: pointer;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="firework"></div>
+      <button class="button" onclick="startFireworks()">Click Me</button>
+    
+      <script>
+        function startFireworks() {
+          setInterval(function() {
+            var firework = document.createElement('div');
+            firework.classList.add('firework');
+            firework.style.left = Math.random() * 100 + '%';
+            firework.style.top = Math.random() * 100 + '%';
+            firework.style.backgroundColor = 'hsl(' + Math.random() * 360 + ', 100%, 50%)';
+            document.body.appendChild(firework);
+    
+            setTimeout(function() {
+              firework.remove();
+            }, 2000);
+          }, 100);
+        }
+      </script>
+    </body>
+    </html>
