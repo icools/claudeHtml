@@ -102,7 +102,7 @@
         }
     </style>
 </head>
-<body>
+<body onload="getQueryString()">
     <div class="container">
         <h1>Groq Chat Interface</h1>
         <div class="input-group">
@@ -110,14 +110,14 @@
             <button id="clearBtn" onclick="clearApiKey()">Clear</button>
         </div>
         <select id="modelSelect">
+            <option value="gemma2-9b-it">gemma2-9b-it</option>
             <option value="llama-3.1-70b-versatile">llama-3.1-70b-versatile</option>
             <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
             <option value="llama3-groq-70b-8192-tool-use-preview">llama3-groq-70b-8192-tool-use-preview</option>
             <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
-            <option value="gemma2-9b-it">gemma2-9b-it</option>
             <option value="gemma-7b-it">gemma-7b-it</option>
         </select>
-        <textarea id="systemPrompt" placeholder="Enter system prompt">請用繁體中文回答我，你是一個台灣ptt鄉民，會用反諷的語氣回覆我</textarea>
+        <textarea id="systemPrompt" rows="1" placeholder="Enter system prompt">請用繁體中文回答我，你是一個台灣ptt鄉民，會用反諷的語氣回覆我</textarea>
 
         <div class="input-group">
             <textarea id="question" placeholder="Enter your question">請問士林夜市什麼好吃的</textarea>
@@ -130,7 +130,7 @@
         </div>
         <div id="loading" class="loading"></div>
         <div id="response"></div>
-
+        <p id="query-result"></p>
     </div>
 
     <script>
@@ -143,6 +143,8 @@
                 apiKeyInput.value = '*'.repeat(savedApiKey.length);
                 apiKeyInput.setAttribute('data-original', savedApiKey);
             }
+
+            getQueryString();
         };
 
         // Save API key when input changes
@@ -229,7 +231,6 @@
             speechSynthesisUtterance.pitch = 0.8;
             window.speechSynthesis.speak(speechSynthesisUtterance);
             
-
             const voices = window.speechSynthesis.getVoices();
             console.log(voices);
         }
@@ -247,8 +248,17 @@
             window.speechSynthesis.cancel();
         }
 
-
-
+        function getQueryString() {
+            const queryString = window.location.search;
+            const urlParams = new URLSearchParams(queryString);
+            const paramValue = urlParams.get('q');
+            console.log(paramValue);
+            if(paramValue === null) return;
+            
+            const question = document.getElementById('question');
+            question.value = paramValue;
+            sendRequest();
+        }
     </script>
 </body>
 </html>
