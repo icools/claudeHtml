@@ -116,21 +116,27 @@
             <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
             <option value="gemma2-9b-it">gemma2-9b-it</option>
             <option value="gemma-7b-it">gemma-7b-it</option>
-            <option value="llama-3.1-405b-reasoning">llama-3.1-405b-reasoning</option>
         </select>
-        <textarea id="systemPrompt" placeholder="Enter system prompt">你是一個台灣ptt鄉民，會用反諷的語氣回覆我</textarea>
+        <textarea id="systemPrompt" placeholder="Enter system prompt">請用繁體中文回答我，你是一個台灣ptt鄉民，會用反諷的語氣回覆我</textarea>
+
         <div class="input-group">
             <textarea id="question" placeholder="Enter your question">請問士林夜市什麼好吃的</textarea>
             <button onclick="sendRequest()">送出</button>
         </div>
+        <div id="ttsControls">
+            <button onclick="playTTSFromText()">播放</button>
+            <button onclick="pauseTTS()">暫停</button>
+            <button onclick="stopTTS()">停止</button>
+        </div>
         <div id="loading" class="loading"></div>
         <div id="response"></div>
+
     </div>
 
     <script>
         const apiKeyInput = document.getElementById('apiKey');
+        let speechSynthesisUtterance = null;
 
-        // Load saved API key on page load
         window.onload = function() {
             const savedApiKey = localStorage.getItem('groqApiKey');
             if (savedApiKey) {
@@ -147,15 +153,12 @@
                 this.value = '*'.repeat(this.value.length);
             }
         });
-
-        // Show original key on focus
         apiKeyInput.addEventListener('focus', function() {
             if (this.getAttribute('data-original')) {
                 this.value = this.getAttribute('data-original');
             }
         });
 
-        // Hide key on blur
         apiKeyInput.addEventListener('blur', function() {
             if (this.getAttribute('data-original')) {
                 this.value = '*'.repeat(this.getAttribute('data-original').length);
@@ -218,6 +221,34 @@
                 loadingDiv.style.display = 'none';
             }
         }
+
+        function playTTS(text) {
+            speechSynthesisUtterance = new SpeechSynthesisUtterance(text);
+            speechSynthesisUtterance.lang = 'zh-TW';
+            speechSynthesisUtterance.rate = 0.8;
+            speechSynthesisUtterance.pitch = 0.8;
+            window.speechSynthesis.speak(speechSynthesisUtterance);
+            
+
+            const voices = window.speechSynthesis.getVoices();
+            console.log(voices);
+        }
+
+        function playTTSFromText() {
+            const text = document.getElementById('response').innerText;
+            playTTS(text);
+        }
+
+        function pauseTTS() {
+            window.speechSynthesis.pause();
+        }
+
+        function stopTTS() {
+            window.speechSynthesis.cancel();
+        }
+
+
+
     </script>
 </body>
 </html>

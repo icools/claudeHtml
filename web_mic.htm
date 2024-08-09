@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>改進的語音識別演示</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #result {
+            margin-top: 1rem;
+            min-height: 100px;
+            border: 1px solid #ddd;
+            padding: 1rem;
+            border-radius: 5px;
+        }
+        #status {
+            margin-top: 1rem;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>改進的語音識別演示</h1>
+        <button id="toggleRecording">開始錄音</button>
+        <div id="result"></div>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const toggleButton = document.getElementById('toggleRecording');
+        const resultDiv = document.getElementById('result');
+        const statusDiv = document.getElementById('status');
+
+        let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'zh-TW';
+        recognition.interimResults = true;
+        recognition.continuous = true;
+
+        let isRecording = false;
+
+        recognition.onresult = (event) => {
+            const transcript = Array.from(event.results)
+                .map(result => result[0].transcript)
+                .join('');
+            resultDiv.textContent = transcript;
+        };
+
+        recognition.onend = () => {
+            if (isRecording) {
+                recognition.start();
+            }
+        };
+
+        toggleButton.addEventListener('click', () => {
+            if (!isRecording) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        });
+
+        async function startRecording() {
+            try {
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                recognition.start();
+                isRecording = true;
+                toggleButton.textContent = '停止錄音';
+                statusDiv.textContent = '正在錄音...';
+            } catch (err) {
+                console.error('無法獲取麥克風權限:', err);
+                statusDiv.textContent = '無法獲取麥克風權限。請確保您已授予權限。';
+            }
+        }
+
+        function stopRecording() {
+            recognition.stop();
+            isRecording = false;
+            toggleButton.textContent = '開始錄音';
+            statusDiv.textContent = '已停止錄音';
+        }
+    </script>
+</body>
+</html>

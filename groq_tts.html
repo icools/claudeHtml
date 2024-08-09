@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groq Chat Interface</title>
+    <style>
+        /* ... (previous styles remain unchanged) ... */
+        #ttsControls {
+            display: none;
+            margin-top: 10px;
+        }
+        #ttsControls button {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Groq Chat Interface</h1>
+        <!-- ... (previous HTML elements remain unchanged) ... -->
+        <div id="response"></div>
+        <div id="ttsControls">
+            <button onclick="playTTS()">播放</button>
+            <button onclick="pauseTTS()">暫停</button>
+            <button onclick="stopTTS()">停止</button>
+        </div>
+    </div>
+
+    <script>
+        // ... (previous JavaScript code remains unchanged) ...
+
+        let speech = null;
+
+        async function sendRequest() {
+            // ... (previous sendRequest code remains unchanged) ...
+
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    // ... (fetch configuration remains unchanged) ...
+                });
+
+                const data = await response.json();
+                if (data.choices && data.choices.length > 0) {
+                    const responseText = data.choices[0].message.content;
+                    responseDiv.textContent = responseText;
+                    
+                    // Initialize speech synthesis for TTS
+                    speech = new SpeechSynthesisUtterance(responseText);
+                    speech.lang = 'zh-TW'; // Set language to Traditional Chinese
+                    
+                    // Show TTS controls
+                    document.getElementById('ttsControls').style.display = 'block';
+                } else {
+                    responseDiv.textContent = 'No response received from the API.';
+                }
+            } catch (error) {
+                responseDiv.textContent = `Error: ${error.message}`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+
+        function playTTS() {
+            if (speech) {
+                window.speechSynthesis.speak(speech);
+            }
+        }
+
+        function pauseTTS() {
+            window.speechSynthesis.pause();
+        }
+
+        function stopTTS() {
+            window.speechSynthesis.cancel();
+        }
+    </script>
+</body>
+</html>

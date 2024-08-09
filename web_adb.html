@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web ADB Interface</title>
+</head>
+<body>
+    <h1>Web ADB Interface</h1>
+    <button id="connectButton">連接設備</button>
+    <br><br>
+    <input type="text" id="adbCommand" placeholder="輸入 ADB 指令">
+    <button id="executeButton">執行</button>
+    <pre id="output"></pre>
+
+    <!-- 確保正確引用 WebADB 庫 -->
+    <script src="https://unpkg.com/@yume-chan/adb/lib/web/index.js"></script>
+    <script>
+        const connectButton = document.getElementById('connectButton');
+        const executeButton = document.getElementById('executeButton');
+        const outputElement = document.getElementById('output');
+        const adbCommandInput = document.getElementById('adbCommand');
+
+        let device;
+        let adbShell;
+
+        connectButton.addEventListener('click', async () => {
+            try {
+                const adb = new ADB.WebUSBBackend(); // 使用 WebUSB 後端
+                device = await adb.connect();
+                adbShell = await device.shell();
+
+                outputElement.textContent = '設備已連接';
+            } catch (error) {
+                console.error('連接失敗:', error);
+                outputElement.textContent = '連接失敗: ' + error;
+            }
+        });
+
+        executeButton.addEventListener('click', async () => {
+            const command = adbCommandInput.value;
+            if (!device || !adbShell) {
+                outputElement.textContent = '請先連接設備';
+                return;
+            }
+
+            try {
+                const shellStream = await adbShell.exec(command);
+                const reader = shellStream.getReader();
+                let result = '';
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    result += new TextDecoder().decode(value);
+                }
+
+                outputElement.textContent = result;
+            } catch (error) {
+                console.error('執行命令失敗:', error);
+                outputElement.textContent = '執行命令失敗: ' + error;
+            }
+        });
+    </script>
+</body>
+</html>
