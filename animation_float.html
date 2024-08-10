@@ -16,7 +16,7 @@
             flex-direction: column;
         }
         #canvas {
-            border: 1px solid #fff;
+            border: 0px solid #fff;
         }
         #input {
             padding: 10px;
@@ -50,6 +50,7 @@
         let hue = 0;
         let angle = 0;
         let speedFactor = 0.02;
+        let isMouseOver = false;
 
         class Particle {
             constructor(x, y) {
@@ -132,22 +133,34 @@
             }
             hue += 0.5;
 
-            // 模擬滑鼠移動
-            angle += speedFactor;
-            mouse.x = canvas.width/2 + Math.sin(angle) * (canvas.width / 3);
-            mouse.y = canvas.height/2 + Math.cos(angle) * (canvas.height / 3);
+            if (!isMouseOver) {
+                // 模擬滑鼠移動
+                angle += speedFactor;
+                mouse.x = canvas.width/2 + Math.sin(angle) * (canvas.width / 3);
+                mouse.y = canvas.height/2 + Math.cos(angle) * (canvas.height / 3);
 
-            // 隨機調整速度
-            speedFactor = 0.01 + Math.random() * 0.02;
-
+                // 隨機調整速度
+                speedFactor = 0.01 + Math.random() * 0.02;
+            }
+            console.log(particlesArray.length);
             requestAnimationFrame(animate);
         }
 
         const mouse = {
             x: null,
             y: null,
-            radius: 50
+            radius: 80
         };
+
+        canvas.addEventListener('mousemove', function(event) {
+            isMouseOver = true;
+            mouse.x = event.offsetX;
+            mouse.y = event.offsetY;
+        });
+
+        canvas.addEventListener('mouseleave', function() {
+            isMouseOver = false;
+        });
 
         submit.addEventListener('click', function() {
             init();
@@ -159,6 +172,7 @@
             canvas.height = window.innerHeight / 2;
             init();
         });
+
 
     </script>
 </body>
