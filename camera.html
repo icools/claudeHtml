@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Capture and Recognition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.3.4/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 100%;
+            max-width: 500px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        #video {
+            width: 100%;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        button, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #clearBtn {
+            background-color: #f44336;
+        }
+        #clearBtn:hover {
+            background-color: #da190b;
+        }
+        #result {
+            width: 100%;
+            height: 100px;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image Capture and Recognition</h1>
+        <input type="text" id="apiKeyInput" placeholder="Enter Gemini API Key">
+        <video id="video" autoplay playsinline></video>
+        <button id="captureBtn">Capture Image and Recognize</button>
+        <canvas id="canvas" style="display:none;"></canvas>
+        <textarea id="result" readonly placeholder="Recognition result will appear here..."></textarea>
+        <button id="clearBtn">Clear Stored API Key</button>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('captureBtn');
+        const result = document.getElementById('result');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const clearBtn = document.getElementById('clearBtn');
+
+        let apiKey = localStorage.getItem('geminiApiKey') || '';
+
+        // Function to mask the API key
+        function maskApiKey(key) {
+            return '*'.repeat(key.length);
+        }
+
+        // Set initial value and mask
+        if (apiKey) {
+            apiKeyInput.value = maskApiKey(apiKey);
+        }
+
+        apiKeyInput.addEventListener('focus', function() {
+            if (apiKey) {
+                this.value = apiKey;
+            }
+        });
+
+        apiKeyInput.addEventListener('blur', function() {
+            if (this.value) {
+                apiKey = this.value;
+                localStorage.setItem('geminiApiKey', apiKey);
+                this.value = maskApiKey(apiKey);
+            }
+        });
+
+        clearBtn.addEventListener('click', function() {
+            localStorage.removeItem('geminiApiKey');
+            apiKey = '';
+            apiKeyInput.value = '';
+        });
+
+        // Access the camera
+        async function setupCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            video.srcObject = stream;
+        }
+
+        setupCamera();
+
+        // Function to upload file to Gemini API
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await axios.post(
+                    `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
+                    formData,
+                    {
+                        headers: {
+                            'X-Goog-Upload-Command': 'start, upload, finalize',
+                            'X-Goog-Upload-Header-Content-Length': file.size,
+                            'X-Goog-Upload-Header-Content-Type': file.type,
+                            'Content-Type': 'application/json',
+                        },
+                    }
+                );
+                return response.data.file.uri;
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                throw error;
+            }
+        }
+
+        // Function to generate content using Gemini API
+        async function generateContent(fileUri) {
+            try {
+                const response = await axios.post(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+                    {
+                        contents: [
+                            {
+                                role: "user",
+                                parts: [
+                                    {
+                                        fileData: {
+                                            fileUri: fileUri,
+                                            mimeType: "image/jpeg"
+                                        }
+                                    },
+                                    {
+                                        text: "Describe this image"
+                                    }
+                                ]
+                            }
+                        ],
+                        generationConfig: {
+                            temperature: 1,
+                            topK: 64,
+                            topP: 0.95,
+                            maxOutputTokens: 8192,
+                            responseMimeType: "text/plain"
+                        }
+                    },
+                    {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+                return response.data.candidates[0].content.parts[0].text;
+            } catch (error) {
+                console.error('Error generating content:', error);
+                throw error;
+            }
+        }
+
+        captureBtn.addEventListener('click', async () => {
+            if (!apiKey) {
+                result.value = 'Please enter a valid API key.';
+                return;
+            }
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            canvas.toBlob(async (blob) => {
+                try {
+                    result.value = 'Uploading image...';
+                    const fileUri = await uploadFile(blob);
+                    result.value = 'Generating content...';
+                    const content = await generateContent(fileUri);
+                    result.value = content;
+                    localStorage.setItem('geminiApiKey', apiKey);
+                } catch (error) {
+                    console.error('Error:', error);
+                    result.value = 'Error occurred during recognition.';
+                }
+            }, 'image/jpeg');
+        });
+    </script>
+</body>
+</html>
