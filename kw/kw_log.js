@@ -1,4 +1,3 @@
-
 class KwLog {
     constructor(raw) {
         this.raw = raw;
@@ -67,6 +66,36 @@ class GPLOCATION extends KwLog {
         super(raw);
         const parts = raw.split(',');
         this.base64 = parts[1];
+    }
+}
+
+function getVehicleAndRoutingDisplayText(isTm, value) {
+    const data = [
+        { tm: 33537, d3: 33537, vehicle: "汽車", mode: "最佳路徑" },
+        { tm: 33544, d3: 33544, vehicle: "汽車", mode: "距離優先" },
+        { tm: 164609, d3: 536904449, vehicle: "汽車", mode: "國道+號誌多" },
+        { tm: 295681, d3: 1073775361, vehicle: "汽車", mode: "避免收費路段" },
+        { tm: 2130689, d3: 2130689, vehicle: "重型機車", mode: "最佳路徑" },
+        { tm: 2130696, d3: 2130696, vehicle: "重型機車", mode: "距離優先" },
+        { tm: 2654977, d3: null, vehicle: "重型機車", mode: "快速道路優先" },
+        { tm: 1082113, d3: 1082113, vehicle: "一般機車", mode: "最佳路徑" },
+        { tm: 1082120, d3: 1082120, vehicle: "一般機車", mode: "距離優先" },
+        { tm: 8422145, d3: 8422145, vehicle: "貨車", mode: "最佳路徑" },
+        { tm: 8422152, d3: 8422152, vehicle: "貨車", mode: "距離優先" },
+        { tm: 8553217, d3: 545293057, vehicle: "貨車", mode: "國道+號誌多" },
+        { tm: 8684289, d3: 1082163969, vehicle: "貨車", mode: "避免收費路段" },
+        { tm: 16810753, d3: 16810753, vehicle: "大貨車", mode: "最佳路徑" },
+        { tm: 16810760, d3: 16810760, vehicle: "大貨車", mode: "距離優先" },
+        { tm: 16941825, d3: 553681665, vehicle: "大貨車", mode: "國道+號誌多" },
+        { tm: 17072897, d3: 1090552577, vehicle: "大貨車", mode: "避免收費路段" }
+    ];
+
+    const foundEntry = data.find(entry => (isTm ? entry.tm : entry.d3) === value);
+
+    if (foundEntry) {
+        return `${foundEntry.vehicle} ${foundEntry.mode}`;
+    } else {
+        return "未找到相應的車輛和導航模式";
     }
 }
 
