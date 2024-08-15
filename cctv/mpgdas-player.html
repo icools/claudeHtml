@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPEG-DASH 串流播放器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.2.2/shaka-player.compiled.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+        }
+        .input-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        #urlInput {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #playButton, #captureButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        #videoPlayer {
+            width: 100%;
+            max-width: 800px;
+        }
+        #capturePreview {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 200px;
+            border: 2px solid #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <h1>MPEG-DASH 串流播放器</h1>
+    <div class="input-container">
+        <input type="text" id="urlInput" placeholder="輸入 MPEG-DASH MPD URL">
+        <button id="playButton">播放</button>
+        <button id="captureButton">擷取畫面</button>
+    </div>
+    <video id="videoPlayer" controls></video>
+    <canvas id="capturePreview"></canvas>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const playButton = document.getElementById('playButton');
+        const captureButton = document.getElementById('captureButton');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const capturePreview = document.getElementById('capturePreview');
+        const ctx = capturePreview.getContext('2d');
+
+        playButton.addEventListener('click', () => {
+            const videoSrc = urlInput.value.trim();
+            if (videoSrc) {
+                // Initialize the Shaka Player
+                const player = new shaka.Player(videoPlayer);
+
+                // Listen for error events.
+                player.addEventListener('error', onErrorEvent);
+
+                // Load the specified video.
+                player.load(videoSrc).then(() => {
+                    console.log('The video has been loaded successfully.');
+                }).catch(onError);  // onError is executed if the load fails.
+            } else {
+                alert('請輸入有效的 MPEG-DASH MPD URL');
+            }
+        });
+
+        captureButton.addEventListener('click', () => {
+            capturePreview.width = 200;
+            capturePreview.height = 200;
+            ctx.drawImage(videoPlayer, 0, 0, 200, 200);
+        });
+
+        function onErrorEvent(event) {
+            onError(event.detail);
+        }
+
+        function onError(error) {
+            console.error('Error code', error.code, 'object', error);
+            alert('播放時發生錯誤，請檢查 URL 是否正確或支援的流媒體格式。');
+        }
+    </script>
+</body>
+</html>
