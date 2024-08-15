@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLS 串流播放器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .input-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        #urlInput {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #playButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #videoPlayer {
+            width: 100%;
+            max-width: 800px;
+        }
+    </style>
+</head>
+<body>
+    <h1>HLS 串流播放器</h1>
+    <div class="input-container">
+        <input type="text" id="urlInput" placeholder="輸入 M3U8 URL">
+        <button id="playButton">播放</button>
+    </div>
+    <video id="videoPlayer" controls></video>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const playButton = document.getElementById('playButton');
+        const videoPlayer = document.getElementById('videoPlayer');
+
+        playButton.addEventListener('click', () => {
+            const videoSrc = urlInput.value.trim();
+            if (videoSrc) {
+                if (Hls.isSupported()) {
+                    const hls = new Hls();
+                    hls.loadSource(videoSrc);
+                    hls.attachMedia(videoPlayer);
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        videoPlayer.play();
+                    });
+                }
+                else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoPlayer.src = videoSrc;
+                    videoPlayer.addEventListener('loadedmetadata', () => {
+                        videoPlayer.play();
+                    });
+                }
+                else {
+                    console.error('This browser does not support HLS');
+                    alert('您的瀏覽器不支持 HLS 播放');
+                }
+            }
+            else {
+                alert('請輸入有效的 M3U8 URL');
+            }
+        });
+    </script>
+</body>
+</html>
