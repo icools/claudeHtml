@@ -203,7 +203,10 @@
 
             if (uploadedFile) {
                 try {
+document.getElementById('result').textContent = "uploading...";
                     const fileUri = await uploadFile(uploadedFile, apiKey);
+
+document.getElementById('result').textContent = "upload success,sending request.";
                     const contentResponse = await generateContent(fileUri, apiKey);
                     document.getElementById('result').textContent = JSON.stringify(contentResponse, null, 2);
 
