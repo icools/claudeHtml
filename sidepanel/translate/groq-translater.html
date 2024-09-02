@@ -239,7 +239,6 @@
                     id="apiKey"
                     placeholder="Enter your Groq API Key"
                 />
-                <button id="clearBtn" onclick="clearApiKey()">Clear</button>
             </div>
             <select id="modelSelect">
                 <option value="gemma2-9b-it">gemma2-9b-it</option>
@@ -261,10 +260,10 @@
                 <button onclick="sendRequest()">送出</button>
             </div>
             <div id="ttsControls">
-                <button onclick="playTTSFromText()">播放</button>
-                <button onclick="pauseTTS()">暫停</button>
-                <button onclick="stopTTS()">停止</button>
-                <button id="clearBtn" onclick="clearApiKey()">清除</button>
+                <button onclick="playTTSFromText()">Play</button>
+                <button onclick="pauseTTS()">Pause</button>
+                <button onclick="stopTTS()">Stop</button>
+                <button id="clearBtn" onclick="clearApiKey()">ClearKey</button>
             </div>
             <div id="loading" class="loading"></div>
             <div id="response"></div>
