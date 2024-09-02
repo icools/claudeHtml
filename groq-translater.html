@@ -201,8 +201,8 @@
                 apiKeyInput.removeAttribute("data-original");
             }
     
-            async function translateText(model, text, groqApiKey) {
-                const response = await fetch(
+            async function agent(model, text, groqApiKey,messages) {
+                return await fetch(
                     `https://api.groq.com/openai/v1/chat/completions`,
                     {
                         method: "POST",
@@ -210,20 +210,23 @@
                             'Authorization': `Bearer ${groqApiKey}`,
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({
-                            messages: [
-                                {
-                                    role: "user",
-                                    content:
-                                        `將英文內容翻譯成用 繁體中文，不需要額外的解釋.${text}`,
-                                }
-                            ],
-                            model: model,
-                        }),
+                        body: JSON.stringify(messages),
                     },
                 );
-                return response;
-            }        
+            }   
+
+            async function translateText(model, text, groqApiKey) {
+                return agent(model, text, groqApiKey, {
+                    messages: [
+                        {
+                            role: "user",
+                            content:
+                                `將英文內容翻譯成用 繁體中文，不需要額外的解釋.${text}`,
+                        }
+                    ],
+                    model: model,
+                });
+            }     
         </script>
     </head>
     <body>
@@ -264,9 +267,6 @@
             </div>
             <div id="loading" class="loading"></div>
             <div id="response"></div>
-            <p id="query-result"></p>
         </div>
-
     </body>
-
 </html>
