@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
     <head>
+        <!-- 單字拆解 / 發音-->
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Groq Chat Interface</title>
@@ -170,14 +171,14 @@
                 responseDiv.textContent = "";
 
                 apiKeyInput.addEventListener("change", function () {
-                if (
-                    this.value &&
-                    this.value !== "*".repeat(this.value.length)
-                ) {
-                    localStorage.setItem("groqApiKey", this.value);
-                    this.setAttribute("data-original", this.value);
-                    this.value = "*".repeat(this.value.length);
-                }
+                    if (
+                        this.value &&
+                        this.value !== "*".repeat(this.value.length)
+                    ) {
+                        localStorage.setItem("groqApiKey", this.value);
+                        this.setAttribute("data-original", this.value);
+                        this.value = "*".repeat(this.value.length);
+                    }
                 });
                 apiKeyInput.addEventListener("focus", function () {
                     if (this.getAttribute("data-original")) {
