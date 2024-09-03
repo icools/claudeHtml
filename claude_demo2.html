@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Dropdown Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene, Camera, Renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Emoji list
+        const emojiList = ['😀', '😂', '🥰', '😎', '😍', '😡', '🤔', '😴', '😇', '🤩',
+                           '😜', '😋', '😢', '😭', '😱', '😳', '🤯', '🤪', '🤬', '😷',
+                           '🤤', '😵', '🤠', '😈', '👹', '👺', '👻', '💀', '☠️', '👽',
+                           '👾', '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀',
+                           '😿', '😾', '🙈', '🙉', '🙊', '👶', '🧒', '👦', '👧', '👨'];
+
+        // Create emoji textures
+        function createEmojiTexture(emoji) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const context = canvas.getContext('2d');
+            context.font = '100px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(emoji, 64, 64);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // Create emoji objects
+        const emojis = [];
+        function createEmojis(count) {
+            for (let i = 0; i < count; i++) {
+                const emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const material = new THREE.MeshBasicMaterial({ map: createEmojiTexture(emoji) });
+                const emojiMesh = new THREE.Mesh(geometry, material);
+                emojiMesh.position.set(Math.random() * 20 - 10, Math.random() * 20 + 5, Math.random() * 20 - 10);
+                emojiMesh.velocityY = 0.05; // Initial fall speed
+                scene.add(emojiMesh);
+                emojis.push(emojiMesh);
+            }
+        }
+
+        // Initialize with 50 emojis
+        createEmojis(50);
+
+        // Set camera position
+        camera.position.z = 20;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update emoji positions
+            emojis.forEach(emoji => {
+                emoji.position.y -= emoji.velocityY;
+                if (emoji.position.y < -10) {
+                    emoji.position.y = 10;
+                    emoji.velocityY = 0.05; // Reset speed
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle clicks or touches on emojis
+        function onDocumentClick(event) {
+            event.preventDefault();
+
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // Create a raycaster
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+
+            // Find intersected objects
+            const intersects = raycaster.intersectObjects(emojis);
+
+            if (intersects.length > 0) {
+                const intersectedEmoji = intersects[0].object;
+                intersectedEmoji.velocityY += 0.5; // Increase drop speed
+                createEmojis(5); // Add 5 more emojis
+            }
+        }
+
+        // Add event listeners for clicks and touches
+        document.addEventListener('click', onDocumentClick, false);
+        document.addEventListener('touchstart', onDocumentClick, false);
+
+    </script>
+</body>
+</html>
