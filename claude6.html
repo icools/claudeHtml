@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complex Particle System Demo</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: black; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene, Camera, Renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Mouse interaction
+        const mouse = new THREE.Vector2();
+        const target = new THREE.Vector3();
+
+        // Create particle system
+        const particleCount = 20000;
+        const particles = new THREE.BufferGeometry();
+        const positions = [];
+        const colors = [];
+        const sizes = [];
+        const color = new THREE.Color();
+
+        for (let i = 0; i < particleCount; i++) {
+            positions.push((Math.random() * 2 - 1) * 500);
+            positions.push((Math.random() * 2 - 1) * 500);
+            positions.push((Math.random() * 2 - 1) * 500);
+
+            color.setHSL(i / particleCount, 1.0, 0.5);
+            colors.push(color.r, color.g, color.b);
+
+            sizes.push(Math.random() * 5);
+        }
+
+        particles.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        particles.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        particles.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1).setUsage(THREE.DynamicDrawUsage));
+
+        // Particle material
+        const particleMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                color: { value: new THREE.Color(0xffffff) },
+                pointTexture: { value: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/disc.png') }
+            },
+            vertexShader: `
+                attribute float size;
+                varying vec3 vColor;
+                void main() {
+                    vColor = color;
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    gl_PointSize = size * (300.0 / -mvPosition.z);
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 color;
+                varying vec3 vColor;
+                uniform sampler2D pointTexture;
+                void main() {
+                    gl_FragColor = vec4(color * vColor, 1.0);
+                    gl_FragColor = gl_FragColor * texture2D(pointTexture, gl_PointCoord);
+                    if (gl_FragColor.a < 0.1) discard;
+                }
+            `,
+            blending: THREE.AdditiveBlending,
+            depthTest: false,
+            transparent: true
+        });
+
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+
+        // Lighting (for smoke effect)
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(1, 1, 1).normalize();
+        scene.add(light);
+
+        // Create smoke effect
+        const smokeParticles = [];
+        const smokeTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/smoke.png');
+        const smokeMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, map: smokeTexture, transparent: true });
+
+        for (let i = 0; i < 50; i++) {
+            const smokeGeo = new THREE.PlaneGeometry(300, 300);
+            const smokeMesh = new THREE.Mesh(smokeGeo, smokeMaterial);
+            smokeMesh.position.set(Math.random() * 1000 - 500, Math.random() * 500 - 250, Math.random() * 1000 - 500);
+            smokeMesh.rotation.z = Math.random() * 360;
+            scene.add(smokeMesh);
+            smokeParticles.push(smokeMesh);
+        }
+
+        // Camera setup
+        camera.position.z = 1000;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update particles
+            const positions = particles.attributes.position.array;
+            const sizes = particles.attributes.size.array;
+
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3 + 1] -= 2;
+
+                if (positions[i * 3 + 1] < -500) {
+                    positions[i * 3 + 1] = 500;
+                }
+
+                sizes[i] = 5 * (1 + Math.sin((i + Date.now() * 0.002) * 0.01));
+            }
+
+            particles.attributes.position.needsUpdate = true;
+            particles.attributes.size.needsUpdate = true;
+
+            // Update smoke
+            smokeParticles.forEach(p => {
+                p.rotation.z += 0.002;
+            });
+
+            // Mouse interaction
+            target.x = (mouse.x - target.x) * 0.05;
+            target.y = (mouse.y - target.y) * 0.05;
+            target.z = (mouse.y - target.z) * 0.05;
+
+            camera.position.x += target.x;
+            camera.position.y += target.y;
+            camera.position.z += target.z;
+
+            camera.lookAt(scene.position);
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Mouse move event listener
+        document.addEventListener('mousemove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+    </script>
+</body>
+</html>
