@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Dropdown Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene, Camera, Renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Emoji textures
+        const emojiTextures = ['😀', '😂', '🥰', '😎'].map(emoji => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const context = canvas.getContext('2d');
+            context.font = '100px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(emoji, 64, 64);
+            return new THREE.CanvasTexture(canvas);
+        });
+
+        // Create emoji objects
+        const emojis = [];
+        for (let i = 0; i < emojiTextures.length; i++) {
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            const material = new THREE.MeshBasicMaterial({ map: emojiTextures[i] });
+            const emojiMesh = new THREE.Mesh(geometry, material);
+            emojiMesh.position.set(Math.random() * 10 - 5, Math.random() * 10 + 5, Math.random() * 10 - 5);
+            scene.add(emojiMesh);
+            emojis.push(emojiMesh);
+        }
+
+        // Set camera position
+        camera.position.z = 10;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update emoji positions
+            emojis.forEach(emoji => {
+                emoji.position.y -= 0.05;
+                if (emoji.position.y < -5) {
+                    emoji.position.y = 5;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
