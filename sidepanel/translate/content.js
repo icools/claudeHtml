@@ -11,15 +11,6 @@
         chrome.sidePanel.open({ tabId: tab.id });
   });
   
-//   chrome.tabs.onActivated.addListener(async ({ tabId }) => {
-//       const { path } = await chrome.sidePanel.getOptions({ tabId });
-//       if (path === welcomePage) {
-//         // 替換當下頁面使用
-//         // https://github.com/GoogleChrome/chrome-extensions-samples/tree/main/functional-samples/cookbook.sidepanel-multiple
-//         // chrome.sidePanel.setOptions({ path: mainPage });
-//       }
-//   });
-  
   // 接收來自content.js的訊息
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       //console.log("Background script received message:", request);

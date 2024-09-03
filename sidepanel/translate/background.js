@@ -25,7 +25,6 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 
 // 接收來自content.js的訊息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    //console.log("Background script received message:", request);
     if (request.action === "contentScriptReady") {
         chrome.runtime.sendMessage({ action: "updateSidePanel", data: request.copiedContent });
     }
