@@ -10,6 +10,12 @@ chrome.storage.session.get('lastWord', ({ lastWord }) => {
     showContent(lastWord);
 });
 
+chrome.storage.session.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'session' && changes.lastWord) {
+        showContent(changes.lastWord.newValue);
+    }
+});
+
 function showContent(message) {
     document.getElementById("question").textContent = message;
 }
@@ -60,12 +66,6 @@ document.addEventListener('DOMContentLoaded', function() {
             apiKeyInput.value = "*".repeat(savedApiKey.length);
             apiKeyInput.setAttribute("data-original", savedApiKey);
         }
-
-        // chrome.storage.local.get("selectedText", (data) => {
-        //     if (data.selectedText) {
-        //         document.getElementById("question").value = data.selectedText;
-        //     }
-        // });
 
         apiKeyInput.addEventListener("change", function () {
             if (this.value && this.value !== "*".repeat(this.value.length)) {
