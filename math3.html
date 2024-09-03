@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive p5.js Noise Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        let w, h;
+        let s = 4;
+        let t = 0;
+
+        function a(x, y, d = -Math.exp(-mag(k = w * noise(t) - x, e = h * noise(t, 9) - y) / (40 + 145 * noise(x / 50, y / 50)))) {
+            return [x + k * d, y + e * d];
+        }
+
+        function setup() {
+            w = windowWidth;
+            h = windowHeight;
+            createCanvas(w, h);
+        }
+
+        function draw() {
+            noFill();
+            background(248);
+            for (let y = 0; y < h; y += s) {
+                for (let x = 0; x < w; x += s) {
+                    let p1 = a(x, y);
+                    let p2 = a(x, y + s);
+                    let p3 = a(x + s, y);
+                    triangle(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1]);
+                }
+            }
+            t += 0.02;
+        }
+
+        function windowResized() {
+            w = windowWidth;
+            h = windowHeight;
+            resizeCanvas(w, h);
+        }
+    </script>
+</body>
+</html>

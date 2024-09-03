@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+</head>
+<body>
+    <script>
+        a = (x, y, d = -exp(-mag(k = w * noise(t) - x, e = w * noise(t, 9) - y) / (1 + 45 * noise(x / 30, y / 30)) + .5)) => [x + k * d, y + e * d];
+        s = 3, t = 0;
+        draw = $ => {
+            t || createCanvas(w = 800, w);
+            noFill(t += .02);
+            background(248);
+            for (y = 100; y < 400; y += s)
+                for (x = 100; x < 400; x += s)
+                    triangle(...[a(x, y), a(x, y + s), a(x + s, y)].flat());
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Audio Visualization Demo</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: black; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Three.js scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Particles setup
+        const particleCount = 2000;
+        const particles = new THREE.BufferGeometry();
+        const positions = [];
+        const colors = [];
+        const color = new THREE.Color();
+
+        for (let i = 0; i < particleCount; i++) {
+            positions.push((Math.random() * 2 - 1) * 1000);
+            positions.push((Math.random() * 2 - 1) * 1000);
+            positions.push((Math.random() * 2 - 1) * 1000);
+
+            color.setHSL(i / particleCount, 1.0, 0.5);
+            colors.push(color.r, color.g, color.b);
+        }
+
+        particles.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        particles.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            size: 10,
+            vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            transparent: true
+        });
+
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+
+        // Smoke effect setup
+        const smokeParticles = [];
+        const smokeTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/smoke.png');
+        const smokeMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, map: smokeTexture, transparent: true });
+
+        for (let i = 0; i < 50; i++) {
+            const smokeGeo = new THREE.PlaneGeometry(300, 300);
+            const smokeMesh = new THREE.Mesh(smokeGeo, smokeMaterial);
+            smokeMesh.position.set(Math.random() * 1000 - 500, Math.random() * 500 - 250, Math.random() * 1000 - 500);
+            smokeMesh.rotation.z = Math.random() * 360;
+            scene.add(smokeMesh);
+            smokeParticles.push(smokeMesh);
+        }
+
+        // Ring-based audio visualization setup
+        const ringGroup = new THREE.Group();
+        const ringCount = 128;
+        const ringRadius = 300;
+        const bars = [];
+
+        for (let i = 0; i < ringCount; i++) {
+            const geometry = new THREE.BoxGeometry(5, 5, 50);
+            const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const bar = new THREE.Mesh(geometry, material);
+            bar.position.set(
+                Math.cos((i / ringCount) * Math.PI * 2) * ringRadius,
+                Math.sin((i / ringCount) * Math.PI * 2) * ringRadius,
+                0
+            );
+            bar.lookAt(0, 0, 0);
+            ringGroup.add(bar);
+            bars.push(bar);
+        }
+        scene.add(ringGroup);
+
+        // Lighting
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(1, 1, 1).normalize();
+        scene.add(light);
+
+        // Camera position
+        camera.position.z = 800;
+
+        // Web Audio API setup
+        let audioContext;
+        let analyser;
+        let dataArray;
+
+        async function setupAudio() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const source = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+            source.connect(analyser);
+        }
+
+        setupAudio();
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update particles
+            const positions = particles.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3 + 1] -= 2;
+                if (positions[i * 3 + 1] < -500) {
+                    positions[i * 3 + 1] = 500;
+                }
+            }
+            particles.attributes.position.needsUpdate = true;
+
+            // Update smoke
+            smokeParticles.forEach(p => {
+                p.rotation.z += 0.002;
+            });
+
+            // Update audio visualization
+            if (analyser) {
+                analyser.getByteFrequencyData(dataArray);
+                
+                for (let i = 0; i < ringCount; i++) {
+                    const scale = dataArray[i] / 128.0; // Normalize data
+                    bars[i].scale.z = Math.max(scale * 10, 1); // Avoid 0 scale
+                    bars[i].material.color.setHSL(scale, 1.0, 0.5);
+                }
+            }
+
+            ringGroup.rotation.z += 0.005; // Rotate the ring for effect
+
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>

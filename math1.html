@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Spherical Wave Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        let f = 0;
+        let W, P, R, N, u, v, r, S, Z, U;
+
+        function setup() {
+            W = 400;
+            createCanvas(W, W, WEBGL);
+        }
+
+        function draw() {
+            if (f === 0) {
+                createCanvas(W, W, WEBGL);
+            }
+            background(0);
+            P = PI / 150;
+            R = rotate;
+            N = Math.sin;
+            
+            R(f += 0.001);
+            
+            for (u = 0; u < TAU; u += P) {
+                for (v = 0; v < TAU; v += P) {
+                    push();
+                    r = 200 * N(v);
+                    Z = Math.tan(U = u + f) * N(v) * r;
+                    S = Z * Math.cos(U + v) * 9;
+                    rotateX(U);
+                    R(U);
+                    translate(N(v) * W, N(Z / W) * Math.tan(v) * Z, 2 * -Z);
+                    sphere(S / 600, W);
+                    pop();
+                }
+            }
+        }
+    </script>
+</body>
+</html>
