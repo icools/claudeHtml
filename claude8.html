@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microphone Audio Visualization</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: black; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Three.js scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Create a circular ring
+        const ringGroup = new THREE.Group();
+        const ringCount = 128;
+        const ringRadius = 300;
+        const bars = [];
+
+        for (let i = 0; i < ringCount; i++) {
+            const geometry = new THREE.BoxGeometry(5, 5, 50);
+            const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const bar = new THREE.Mesh(geometry, material);
+            bar.position.set(
+                Math.cos((i / ringCount) * Math.PI * 2) * ringRadius,
+                Math.sin((i / ringCount) * Math.PI * 2) * ringRadius,
+                0
+            );
+            bar.lookAt(0, 0, 0);
+            ringGroup.add(bar);
+            bars.push(bar);
+        }
+        scene.add(ringGroup);
+
+        // Camera position
+        camera.position.z = 600;
+
+        // Web Audio API setup
+        let audioContext;
+        let analyser;
+        let dataArray;
+
+        async function setupAudio() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const source = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+            source.connect(analyser);
+        }
+
+        setupAudio();
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (analyser) {
+                analyser.getByteFrequencyData(dataArray);
+                
+                for (let i = 0; i < ringCount; i++) {
+                    const scale = dataArray[i] / 128.0; // Normalize data
+                    bars[i].scale.z = Math.max(scale * 10, 1); // Avoid 0 scale
+                    bars[i].material.color.setHSL(scale, 1.0, 0.5);
+                }
+            }
+
+            ringGroup.rotation.z += 0.005; // Rotate the ring for effect
+
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
