@@ -1,31 +1,32 @@
-// chrome.runtime.onInstalled.addListener(() => {
-//   chrome.contextMenus.create({
-//     id: "translateText",
-//     title: "Translate with Groq",
-//     contexts: ["selection"]
-//   });
-// });
+function setupContextMenu() {
+  chrome.contextMenus.create({
+    id: 'groq',
+    title: 'GroqTranslate',
+    contexts: ['selection']
+  });
+};
 
-// chrome.contextMenus.onClicked.addListener((info, tab) => {
-//   if (info.menuItemId === "translateText") {
-//     chrome.scripting.executeScript({
-//       target: { tabId: tab.id },
-//       function: getSelectedText
-//     }, (results) => {
-//       if (results && results[0] && results[0].result) {
-//         chrome.storage.local.set({ selectedText: results[0].result });
-//       }
-//     });
-//   }
-// });
-
-function getSelectedText() {
-  return window.getSelection().toString();
-}
-
-chrome.action.onClicked.addListener((tab) => {
-  console.log("Extension icon clicked. Tab ID:", tab.id);
-  requestContentFromTab();
+// 加上發音或者送到 Obsidian 
+chrome.runtime.onInstalled.addListener(() => {
+    setupContextMenu();
 });
 
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+chrome.contextMenus.onClicked.addListener((data, tab) => {
+      const selectionText = data.selectionText;
+      if (data.menuItemId === 'groq') {
+          chrome.storage.session.set({ lastWord: selectionText });
+      }
+      chrome.sidePanel.open({ tabId: tab.id });
+});
+
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+    const { path } = await chrome.sidePanel.getOptions({ tabId });
+});
+
+// 接收來自content.js的訊息
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    //console.log("Background script received message:", request);
+    if (request.action === "contentScriptReady") {
+        chrome.runtime.sendMessage({ action: "updateSidePanel", data: request.copiedContent });
+    }
+});

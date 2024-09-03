@@ -4,7 +4,7 @@
   "name": "Groq Translator Side Panel",
   "version": "1.0",
   "description": "Translate",
-  "permissions": ["activeTab", "scripting", "sidePanel"],
+  "permissions": ["activeTab", "scripting", "sidePanel","contextMenus", "storage","scripting"],
   "background": {
     "service_worker": "background.js"
   },
@@ -17,7 +17,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js","sidepanel.js"]
     }
   ]
 }
