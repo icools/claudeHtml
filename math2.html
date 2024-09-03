@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>p5.js Noise Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        let w = 400;
+        let s = 4;
+        let t = 0;
+
+        function a(x, y, d = -Math.exp(-mag(k = w * noise(t) - x, e = w * noise(t, 9) - y) / (40 + 145 * noise(x / 50, y / 50)))) {
+            return [x + k * d, y + e * d];
+        }
+
+        function setup() {
+            createCanvas(w, w);
+        }
+
+        function draw() {
+            if (t === 0) {
+                createCanvas(w, w);
+            }
+            noFill();
+            background(248);
+            for (let y = 0; y < w; y += s) {
+                for (let x = 0; x < w; x += s) {
+                    let p1 = a(x, y);
+                    let p2 = a(x, y + s);
+                    let p3 = a(x + s, y);
+                    triangle(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1]);
+                }
+            }
+            t += 0.02;
+        }
+    </script>
+</body>
+</html>
