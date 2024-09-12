@@ -20,21 +20,16 @@
     <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-2xl">
         <h1 class="text-3xl font-bold mb-6 text-center text-indigo-700">台灣鄉民導遊</h1>
         <div class="mb-4">
-            <input type="text" id="searchKey" placeholder="搜尋關鍵字" class="w-full p-2 border rounded">
-        </div>
-        <div class="mb-4">
-            <input type="text" id="aiKey" placeholder="AI 金鑰" class="w-full p-2 border rounded">
-        </div>
-        <div class="mb-4">
             <input type="text" id="keyword" placeholder="景點或關鍵字" value="台北車站" class="w-full p-2 border rounded">
         </div>
         <button id="chatButton" class="w-full bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700 transition duration-300">開始聊天</button>
+        <button id="ttsButton" class="mt-4 w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 transition duration-300 hidden">語音播放</button>
         <div id="loading" class="hidden mt-4 text-center">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
             <p class="mt-2 text-indigo-600">讀取中，請稍候...</p>
         </div>
         <div id="result" class="mt-6 p-4 bg-gray-100 rounded hidden"></div>
-        <button id="ttsButton" class="mt-4 w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 transition duration-300 hidden">語音播放</button>
+        
     </div>
 
     <script>
@@ -44,8 +39,8 @@
         const ttsButton = document.getElementById('ttsButton');
 
         chatButton.addEventListener('click', async () => {
-            const searchKey = document.getElementById('searchKey').value;
-            const aiKey = document.getElementById('aiKey').value;
+            //const searchKey = document.getElementById('searchKey').value;
+            //const aiKey = document.getElementById('aiKey').value;
             const keyword = document.getElementById('keyword').value;
 
             // 顯示讀取中提示
@@ -55,12 +50,17 @@
 
             try {
                 // 模擬搜索功能
-                const searchResult = await simulateSearch(keyword);
+                //const searchResult = await simulateSearch(keyword);
                 
                 // 模擬AI聊天功能
-                const prompt = `你是一個電台主持人，台灣ptt鄉民，喜歡酸言酸語，用有趣道地的方式，介紹這個景點或者關鍵字含有的資料: ${searchResult}`;
-                const aiResponse = await simulateAIChat(prompt);
+                //const prompt = `你是一個電台主持人，台灣ptt鄉民，喜歡酸言酸語，用有趣道地的方式，介紹這個景點或者關鍵字含有的資料: ${searchResult}`;
+                //const aiResponse = await simulateAIChat(prompt);
 
+                const keywordData = await fetchKeywordData(keyword);
+                console.log("kw_result:", keywordData);
+                
+                const aiResponse = keywordData || "No keyword found";
+                
                 // 顯示結果並隱藏讀取中提示
                 result.innerHTML = aiResponse;
                 result.classList.remove('hidden');
@@ -85,6 +85,7 @@
         // 模擬搜索功能
         function simulateSearch(keyword) {
             const result = findPlace(keyword);
+
             const candidate = result.then(data => {
                 return JSON.stringify(data.candidates[0]);
             });
@@ -99,6 +100,20 @@
                 return data.choices[0].message.content;
             });
             return answer;
+        }
+
+        async function fetchKeywordData(keyword) {
+            const url = `https://script.google.com/macros/s/AKfycbyOjw_LvdcZpzQcrG7K2G4ef-vPCa2hsv4s4dWfRisrPRA3DExIp3poaiG9r-gjs8cH4A/exec?key=28835663&keyword=${encodeURIComponent(keyword)}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.text();
+                return data;
+            } catch (error) {
+                console.error("Error fetching keyword data:", error);
+            }
         }
 
         async function getChatCompletion(message) {
