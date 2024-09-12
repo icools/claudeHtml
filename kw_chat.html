@@ -26,7 +26,7 @@
             <input type="text" id="aiKey" placeholder="AI 金鑰" class="w-full p-2 border rounded">
         </div>
         <div class="mb-4">
-            <input type="text" id="keyword" placeholder="景點或關鍵字" class="w-full p-2 border rounded">
+            <input type="text" id="keyword" placeholder="景點或關鍵字" value="台北車站" class="w-full p-2 border rounded">
         </div>
         <button id="chatButton" class="w-full bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700 transition duration-300">開始聊天</button>
         <div id="loading" class="hidden mt-4 text-center">
@@ -56,9 +56,9 @@
             try {
                 // 模擬搜索功能
                 const searchResult = await simulateSearch(keyword);
-                console.log(searchResult);
+                
                 // 模擬AI聊天功能
-                const prompt = `你是一個電台主持人，台灣ptt鄉民，用有趣道地的方式介紹這個景點或者關鍵字含有的資料: ${searchResult}`;
+                const prompt = `你是一個電台主持人，台灣ptt鄉民，喜歡酸言酸語，用有趣道地的方式，介紹這個景點或者關鍵字含有的資料: ${searchResult}`;
                 const aiResponse = await simulateAIChat(prompt);
 
                 // 顯示結果並隱藏讀取中提示
@@ -75,6 +75,7 @@
             }
         });
 
+        // fish
         ttsButton.addEventListener('click', () => {
             const speech = new SpeechSynthesisUtterance(result.textContent);
             speech.lang = 'zh-TW';
@@ -92,21 +93,58 @@
 
         // 模擬AI聊天功能
         function simulateAIChat(message) {
-            
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve(`欸欸欸，各位鄉民們！${message},今天要跟大家介紹的景點實在是太讚啦！
-                    這個地方真的是有夠台味的，保證讓你直呼：「台灣第一」！
-                    大家一定要來朝聖一下喔，不來會後悔的啦！
-                    保證讓你的IG按讚數飆高，朋友們都會羨慕死你啦！`);
-                }, 2000);
+            //fish_audio("新聞快報");
+            const result = getChatCompletion(message);
+            const answer = result.then(data => {
+                return data.choices[0].message.content;
             });
+            return answer;
+        }
+
+        async function getChatCompletion(message) {
+            const url = "https://api.groq.com/openai/v1/chat/completions";
+            const apiKey = get_key('groq_key');
+            const data = {
+                messages: [
+                    {
+                        role: "user",
+                        content: `你是一個電台主持人，台灣ptt鄉民，用有趣道地的方式介紹這個景點或者關鍵字含有的資料,${message}`
+                    }
+                ],
+                model: "gemma2-9b-it",
+                temperature: 0.87,
+                max_tokens: 1024,
+                top_p: 1,
+                stream: false,
+                stop: null
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log(result);
+                return result;
+            } catch (error) {
+                console.error("Error fetching completion:", error);
+            }
         }
 
         function get_key(key) {
             const currentUrl = window.location.href;
             const urlParams = new URLSearchParams(new URL(currentUrl).search);
-            return urlParams.get('kw_key');
+            return urlParams.get(key);
         }
 
         async function findPlace(inputText, inputType = "textquery") {
@@ -123,6 +161,22 @@
             }
         }
 
+        function fish_audio(message) {
+            const fish_token = get_key('fish_token');
+            const options = {
+                method: 'POST',
+                headers: {Authorization: `Bearer ${fish_token}`, 'Content-Type': 'application/json'},
+                body: `{"text":"${message}","reference_id":"59cb5986671546eaa6ca8ae6f29f6d22","format":"mp3","mp3_bitrate":128,"latency":"normal"}`
+            };
+
+            const result = fetch('https://api.fish.audio/v1/tts', options)
+                .then(response => response.json())
+                .then(response => console.log(response))
+                .catch(err => console.error(err));
+        }
+
+        //59cb5986671546eaa6ca8ae6f29f6d22
+        //3b55b3d84d2f453a98d8ca9bb24182d6
     </script>
 </body>
 </html>
