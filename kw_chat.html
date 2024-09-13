@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-    <!-- add fish tts / dropdown list for poi /  + vison image -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>台灣鄉民導遊 - 互動式景點介紹</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
     <style>
+        body {
+            background-image: url('https://source.unsplash.com/random/1920x1080');
+            background-size: cover;
+            background-attachment: fixed;
+        }
         @keyframes backgroundPulse {
             0% { background-color: #f3f4f6; }
             50% { background-color: #e5e7eb; }
@@ -15,7 +19,6 @@
         .result-animation {
             animation: fadeIn 1s;
         }
-
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -23,7 +26,21 @@
         .hidden {
             display: none;
         }
-</style>
+        .custom-input {
+            border: 2px solid #e5e7eb;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .custom-button {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .custom-button:hover {
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+        }
+        .custom-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5;
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-r from-blue-400 to-indigo-600 min-h-screen flex items-center justify-center">
     <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-2xl">
