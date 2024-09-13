@@ -114,8 +114,7 @@
 
         function get_key(key) {
             const currentUrl = window.location.href;
-            const urlParams = new URLSearchParams(new URL(currentUrl).search);
-            return urlParams.get(key);
+            return new URLSearchParams(new URL(currentUrl).search).get(key);
         }
 
         //59cb5986671546eaa6ca8ae6f29f6d22
