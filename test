@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+    <!-- add fish tts / dropdown list for poi /  + vison image -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣鄉民導遊 - 互動式景點介紹</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+    <style>
+        @keyframes backgroundPulse {
+            0% { background-color: #f3f4f6; }
+            50% { background-color: #e5e7eb; }
+            100% { background-color: #f3f4f6; }
+        }
+        .result-animation {
+            animation: backgroundPulse 2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-400 to-indigo-600 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-2xl">
+        <h1 class="text-3xl font-bold mb-6 text-center text-indigo-700">台灣鄉民導遊</h1>
+        <div class="mb-4">
+            <input type="text" id="keyword" placeholder="景點或關鍵字" value="台北車站" class="w-full p-2 border rounded">
+        </div>
+        <button id="chatButton" class="w-full bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700 transition duration-300">開始聊天</button>
+        <button id="ttsButton" class="mt-4 w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 transition duration-300 hidden">語音播放</button>
+        <div id="loading" class="hidden mt-4 text-center">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <p class="mt-2 text-indigo-600">讀取中，請稍候...</p>
+        </div>
+        <div id="result" class="mt-6 p-4 bg-gray-100 rounded hidden"></div>
+        <audio id="tts-audio" controls></audio>
+    </div>
+
+    <script>
+        const chatButton = document.getElementById('chatButton');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const ttsButton = document.getElementById('ttsButton');
+
+        chatButton.addEventListener('click', async () => {
+            //const searchKey = document.getElementById('searchKey').value;
+            //const aiKey = document.getElementById('aiKey').value;
+            const keyword = document.getElementById('keyword').value;
+
+            // 顯示讀取中提示
+            loading.classList.remove('hidden');
+            result.classList.add('hidden');
+            ttsButton.classList.add('hidden');
+
+            try {
+                // 模擬搜索功能
+                //const searchResult = await simulateSearch(keyword);
+
+                // 模擬AI聊天功能
+                //const prompt = `你是一個電台主持人，台灣ptt鄉民，喜歡酸言酸語，用有趣道地的方式，介紹這個景點或者關鍵字含有的資料: ${searchResult}`;
+                //const aiResponse = await simulateAIChat(prompt);
+
+                const keywordData = await fetchKeywordData(keyword);
+                console.log("kw_result:", keywordData);
+
+                const aiResponse = keywordData || "No keyword found";
+
+                // 顯示結果並隱藏讀取中提示
+                result.innerHTML = aiResponse;
+                result.classList.remove('hidden');
+                result.classList.add('result-animation');
+                ttsButton.classList.remove('hidden');
+            } catch (error) {
+                result.innerHTML = '發生錯誤，請稍後再試。';
+                result.classList.remove('hidden');
+            } finally {
+                // 無論成功與否，都隱藏讀取中提示
+                loading.classList.add('hidden');
+            }
+        });
+
+        // fish
+        ttsButton.addEventListener('click', () => {
+            // const speech = new SpeechSynthesisUtterance(result.textContent);
+            // speech.lang = 'zh-TW';
+            // window.speechSynthesis.speak(speech);
+            fish_audio(result.textContent);
+        });
+
+        // 模擬搜索功能
+        function simulateSearch(keyword) {
+            const result = findPlace(keyword);
+
+            const candidate = result.then(data => {
+                return JSON.stringify(data.candidates[0]);
+            });
+            return candidate;
+        }
+
+        // 模擬AI聊天功能
+        function simulateAIChat(message) {
+            //fish_audio("新聞快報");
+            const result = getChatCompletion(message);
+            const answer = result.then(data => {
+                return data.choices[0].message.content;
+            });
+            return answer;
+        }
+
+        async function fetchKeywordData(keyword) {
+            const url = `https://script.google.com/macros/s/AKfycbyOjw_LvdcZpzQcrG7K2G4ef-vPCa2hsv4s4dWfRisrPRA3DExIp3poaiG9r-gjs8cH4A/exec?key=28835663&keyword=${encodeURIComponent(keyword)}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.text();
+                return data;
+            } catch (error) {
+                console.error("Error fetching keyword data:", error);
+            }
+        }
+
+        async function getChatCompletion(message) {
+            const url = "https://api.groq.com/openai/v1/chat/completions";
+            const apiKey = get_key('groq_key');
+            const data = {
+                messages: [
+                    {
+                        role: "user",
+                        content: `你是一個電台主持人，台灣ptt鄉民，用有趣道地的方式介紹這個景點或者關鍵字含有的資料,${message}`
+                    }
+                ],
+                model: "gemma2-9b-it",
+                temperature: 0.87,
+                max_tokens: 1024,
+                top_p: 1,
+                stream: false,
+                stop: null
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log(result);
+                return result;
+            } catch (error) {
+                console.error("Error fetching completion:", error);
+            }
+        }
+
+        function get_key(key) {
+            const currentUrl = window.location.href;
+            const urlParams = new URLSearchParams(new URL(currentUrl).search);
+            return urlParams.get(key);
+        }
+
+        async function findPlace(inputText, inputType = "textquery") {
+            const KW_KEY = get_key('kw_key');
+            const baseUrl = `https://kwmap.localking.com.tw/maps/api/Place/FindPlaceFromText/json?Input=${encodeURIComponent(inputText)}&InputType=${inputType}&Key=${KW_KEY}`;
+
+            try {
+                const response = await fetch(baseUrl);
+                const jsonData = await response.json();
+                console.log(`findPlace(${inputText}, ${inputType})`);
+                return jsonData;
+            } catch (error) {
+                console.error("Error fetching place:", error);
+            }
+        }
+
+        function fish_audio(message) {
+            message = message.replace(/[\r\n]/g, '');
+            const fish_token = get_key('fish_token');
+            const options = {
+                method: 'POST',
+                headers: {Authorization: `Bearer ${fish_token}`, 'Content-Type': 'application/json'},
+                body: `{"text":"${message}","reference_id":"59cb5986671546eaa6ca8ae6f29f6d22","format":"mp3","mp3_bitrate":128,"latency":"normal"}`
+            };
+
+            const result = fetch('https://api.fish.audio/v1/tts', options)
+                .then(response => response.json())
+                .then(response => console.log(response))
+                .then(response => response.arrayBuffer())  // 將響應轉換為二進制數據
+                .then(data => {
+                    // 將二進制數據轉換為Blob (mp3格式)
+                    const blob = new Blob([data], { type: 'audio/mp3' });
+
+                    // 為Blob生成URL
+                    const audioUrl = URL.createObjectURL(blob);
+
+                    // 將URL設為audio標籤的src
+                    const audioElement = document.getElementById('tts-audio');
+                    audioElement.src = audioUrl;
+
+                    // 播放音頻
+                    audioElement.play();
+                })
+                .catch(error => console.error('Error:', error));
+            }
+
+        //59cb5986671546eaa6ca8ae6f29f6d22
+        //3b55b3d84d2f453a98d8ca9bb24182d6
+    </script>
+</body>
+</html>
