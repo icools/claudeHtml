@@ -13,9 +13,17 @@
             100% { background-color: #f3f4f6; }
         }
         .result-animation {
-            animation: backgroundPulse 2s ease-in-out;
+            animation: fadeIn 1s;
         }
-    </style>
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .hidden {
+            display: none;
+        }
+</style>
 </head>
 <body class="bg-gradient-to-r from-blue-400 to-indigo-600 min-h-screen flex items-center justify-center">
     <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-2xl">
@@ -24,7 +32,7 @@
             <input type="text" id="keyword" placeholder="景點或關鍵字" value="台北車站" class="w-full p-2 border rounded">
         </div>
         <button id="chatButton" class="w-full bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700 transition duration-300">開始聊天</button>
-        <button id="ttsButton" class="mt-4 w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 transition duration-300 hidden">語音播放</button>
+        <button id="ttsButton" class="mt-4 w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 transition duration-300 hidden">Google語音播放</button>
         <div id="loading" class="hidden mt-4 text-center">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
             <p class="mt-2 text-indigo-600">讀取中，請稍候...</p>
