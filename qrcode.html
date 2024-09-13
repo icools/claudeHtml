@@ -64,6 +64,15 @@
             color: red;
             margin-top: 10px;
         }
+        #fireworks-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
     </style>
 </head>
 <body>
@@ -73,13 +82,88 @@
     <div id="result">掃描結果將顯示在這裡</div>
     <div id="error-message"></div>
     <button id="restart-button" disabled>繼續掃描</button>
+    <canvas id="fireworks-canvas"></canvas>
 
     <script>
         const videoPreview = document.getElementById('video-preview');
         const result = document.getElementById('result');
         const restartButton = document.getElementById('restart-button');
         const errorMessage = document.getElementById('error-message');
+        const fireworksCanvas = document.getElementById('fireworks-canvas');
+        const ctx = fireworksCanvas.getContext('2d');
         let scanner = null;
+
+        // 設置 canvas 大小
+        function resizeCanvas() {
+            fireworksCanvas.width = window.innerWidth;
+            fireworksCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 煙火粒子類
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.radius = Math.random() * 2 + 1;
+                this.velocity = {
+                    x: Math.random() * 6 - 3,
+                    y: Math.random() * 6 - 3
+                };
+                this.life = 60;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+
+            update() {
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.life--;
+                this.velocity.y += 0.1;  // 重力效果
+                this.draw();
+            }
+        }
+
+        // 創建煙火動畫
+        function createFireworks() {
+            const particles = [];
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff'];
+
+            for (let i = 0; i < 100; i++) {
+                const x = fireworksCanvas.width / 2;
+                const y = fireworksCanvas.height / 2;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                particles.push(new Particle(x, y, color));
+            }
+
+            function animate() {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                ctx.fillRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+
+                particles.forEach((particle, index) => {
+                    if (particle.life > 0) {
+                        particle.update();
+                    } else {
+                        particles.splice(index, 1);
+                    }
+                });
+
+                if (particles.length > 0) {
+                    requestAnimationFrame(animate);
+                } else {
+                    ctx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+                }
+            }
+
+            animate();
+        }
 
         async function startScanner() {
             try {
@@ -118,9 +202,7 @@
             });
 
             Quagga.onDetected((data) => {
-                stopScanner();
-                result.textContent = `條碼: ${data.codeResult.code}`;
-                restartButton.disabled = false;
+                handleSuccessfulScan(`條碼: ${data.codeResult.code}`);
             });
         }
 
@@ -134,11 +216,16 @@
                 const code = jsQR(imageData.data, imageData.width, imageData.height);
                 
                 if (code) {
-                    stopScanner();
-                    result.textContent = `QR Code: ${code.data}`;
-                    restartButton.disabled = false;
+                    handleSuccessfulScan(`QR Code: ${code.data}`);
                 }
             }, 100);
+        }
+
+        function handleSuccessfulScan(scanResult) {
+            stopScanner();
+            result.textContent = scanResult;
+            restartButton.disabled = false;
+            createFireworks();  // 播放煙火動畫
         }
 
         function stopScanner() {
