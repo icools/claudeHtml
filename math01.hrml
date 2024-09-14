@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced 3D Animated Canvas</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        let particles = [];
+        const numParticles = 200;
+        let rotationX = 0;
+        let rotationY = 0;
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight, WEBGL);
+            for (let i = 0; i < numParticles; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function draw() {
+            background(0);
+            rotateX(rotationX);
+            rotateY(rotationY);
+            
+            for (let particle of particles) {
+                particle.update();
+                particle.display();
+            }
+
+            rotationX += 0.003;
+            rotationY += 0.002;
+        }
+
+        class Particle {
+            constructor() {
+                this.pos = createVector(random(-width/2, width/2), random(-height/2, height/2), random(-500, 500));
+                this.vel = p5.Vector.random3D().mult(random(2, 5));
+                this.size = random(3, 8);
+                this.color = color(random(100, 255), random(100, 255), random(100, 255));
+            }
+
+            update() {
+                this.pos.add(this.vel);
+                
+                if (this.pos.x < -width/2 || this.pos.x > width/2) this.vel.x *= -1;
+                if (this.pos.y < -height/2 || this.pos.y > height/2) this.vel.y *= -1;
+                if (this.pos.z < -500 || this.pos.z > 500) this.vel.z *= -1;
+            }
+
+            display() {
+                push();
+                translate(this.pos.x, this.pos.y, this.pos.z);
+                noStroke();
+                fill(this.color);
+                sphere(this.size);
+                pop();
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>
