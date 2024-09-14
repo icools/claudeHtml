@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated Canvas</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        _=[...Array(99)].map(e=>[201,100,3]),t=0
+        draw=$=>{createCanvas(w=400,w).background(9);_.map(([u,v,w],i)=>circle(u,v,w)/_.map(([x,y,z,d=exp(-mag(k=u-x,e=v-y)/z*5)*9-w/2e4])=>i&&(_[i]=v<300?[u+=k*d,v+=e*d+.02,d>.06?i/3:random(2,4)]:[200,100,i/3])))}
+    </script>
+</body>
+</html>
