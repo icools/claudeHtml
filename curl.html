@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,20 +11,20 @@
             background-color: #1e1e1e;
             color: #e0e0e0;
             margin: 0;
-            padding: 0;
+            padding: 20px;
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 100vh;
+            align-items: flex-start;
+            min-height: 100vh;
         }
         .container {
-            width: 90%;
+            width: 100%;
             max-width: 900px;
             background-color: #2e2e2e;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             border-radius: 10px;
             padding: 20px;
-            margin: 0 auto;
+            box-sizing: border-box;
         }
         h1 {
             text-align: center;
@@ -32,15 +32,16 @@
             color: #fff;
             margin-bottom: 20px;
         }
-        textarea, input {
+        textarea, input, select {
             width: 100%;
-            padding: 15px;
+            padding: 10px 15px;
             margin-top: 10px;
             border: 1px solid #444;
             border-radius: 8px;
             background-color: #3e3e3e;
             color: #e0e0e0;
             font-size: 1em;
+            box-sizing: border-box;
         }
         textarea {
             min-height: 100px;
@@ -58,16 +59,27 @@
             margin-top: 10px;
         }
         th, td {
-            padding: 12px 15px;
+            padding: 8px 10px;
             border: 1px solid #444;
             color: #e0e0e0;
+            vertical-align: top;
         }
         th {
             background-color: #444;
+            width: 30%;
+            word-wrap: break-word;
+        }
+        td:nth-child(1) {
+            width: 30%;
+            word-wrap: break-word;
+        }
+        td:nth-child(2) {
+            width: 70%;
+            word-wrap: break-word;
         }
         button {
             display: inline-block;
-            padding: 12px 20px;
+            padding: 10px 15px;
             font-size: 1em;
             color: white;
             background-color: #007BFF;
@@ -77,14 +89,58 @@
             transition: background-color 0.3s ease;
             margin-top: 20px;
             width: 100%;
+            box-sizing: border-box;
         }
         button:hover {
             background-color: #0056b3;
+        }
+        .header-row button.deleteHeaderBtn {
+            background-color: #dc3545;
+            margin-left: 10px;
+            width: auto;
+            padding: 5px 10px;
+        }
+        .header-row button.deleteHeaderBtn:hover {
+            background-color: #c82333;
         }
         #curlOutput {
             background-color: #3e3e3e;
             font-family: 'Courier New', Courier, monospace;
             color: #e0e0e0;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            min-height: 50px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        #httpPreview {
+            background-color: #3e3e3e;
+            font-family: 'Courier New', Courier, monospace;
+            color: #e0e0e0;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            min-height: 100px;
+            resize: vertical;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .preview {
+            margin-top: 20px;
+        }
+        /* 響應式設計 */
+        @media (max-width: 600px) {
+            th, td {
+                padding: 6px 8px;
+            }
+            button {
+                padding: 8px 12px;
+            }
+            .container {
+                padding: 15px;
+            }
         }
     </style>
 </head>
@@ -92,9 +148,22 @@
     <div class="container">
         <h1>CURL Command Generator - Dark Mode</h1>
 
+        <!-- HTTP 方法與 URL 輸入 -->
+        <label for="httpMethod">HTTP 方法：</label>
+        <select id="httpMethod">
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+            <option value="PATCH">PATCH</option>
+        </select>
+
+        <label for="urlInput">URL：</label>
+        <input type="text" id="urlInput" placeholder="輸入請求的 URL">
+
         <!-- Label and input for the full CURL command -->
-        <label for="curlInput">Enter Full CURL Command:</label>
-        <textarea id="curlInput" placeholder="Paste your full CURL command here"></textarea>
+        <label for="curlInput">輸入完整的 CURL 命令：</label>
+        <textarea id="curlInput" placeholder="在此貼上完整的 CURL 命令"></textarea>
 
         <div class="headers">
             <h2>HTTP Headers</h2>
@@ -102,73 +171,100 @@
                 <tr>
                     <th>Key</th>
                     <th>Value</th>
+                    <th>操作</th>
                 </tr>
                 <!-- Dynamic Header Rows Will Be Inserted Here -->
             </table>
-            <button id="addHeaderBtn">Add Header</button>
+            <button id="addHeaderBtn">新增 Header</button>
         </div>
 
         <div class="body">
             <!-- Label and input for the Body content -->
-            <label for="bodyInput">Body Content:</label>
-            <textarea id="bodyInput" placeholder="Body content goes here"></textarea>
+            <label for="dataFormat">數據格式：</label>
+            <select id="dataFormat">
+                <option value="json">JSON</option>
+                <option value="form">Form Data</option>
+                <option value="urlencoded">URL Encoded</option>
+                <option value="raw">Raw</option>
+            </select>
+
+            <label for="bodyInput">Body 內容：</label>
+            <textarea id="bodyInput" placeholder="在此輸入或編輯 Body 內容"></textarea>
         </div>
 
         <!-- Generate CURL Button -->
-        <button id="generateCurlBtn">Generate CURL</button>
+        <button id="generateCurlBtn">生成 CURL</button>
+        <button id="copyCurlBtn">複製 CURL</button>
 
         <!-- Output Field -->
-        <label for="curlOutput">Generated CURL Command:</label>
-        <textarea id="curlOutput" readonly placeholder="Generated CURL command will appear here"></textarea>
+        <label for="curlOutput">生成的 CURL 命令：</label>
+        <textarea id="curlOutput" readonly placeholder="生成的 CURL 命令將顯示在此"></textarea>
+
+        <!-- 預覽區域 -->
+        <div class="preview">
+            <h2>HTTP 請求預覽</h2>
+            <pre id="httpPreview"></pre>
+        </div>
+
+        <!-- 導入與導出配置 -->
+        <button id="exportBtn">導出配置</button>
+        <button id="importBtn">導入配置</button>
+        <input type="file" id="importFile" style="display:none;" />
+
+        <!-- 範例按鈕 -->
+        <button id="loadExampleBtn">載入範例</button>
     </div>
 
     <script>
-        document.getElementById('generateCurlBtn').addEventListener('click', function () {
-            // 取得 Headers 和 Body 的值
-            let headers = document.querySelectorAll('#headersTable tr');
-            let body = document.getElementById('bodyInput').value;
+        // 添加 Header 行
+        function addHeaderRow(key = '', value = '') {
+            const headersTable = document.getElementById('headersTable');
+            const row = headersTable.insertRow();
+            row.classList.add('header-row');
 
-            let curlCommand = 'curl ';
+            const cellKey = row.insertCell(0);
+            const cellValue = row.insertCell(1);
+            const cellAction = row.insertCell(2);
 
-            // 解析 Headers 並生成 -H 部分的 curl
-            headers.forEach((header, index) => {
-                if (index > 0) { // Skip header row
-                    let key = header.querySelector('input[name="headerKey"]').value;
-                    let value = header.querySelector('input[name="headerValue"]').value;
-                    curlCommand += `-H '${key}: ${value}' `;
-                }
+            cellKey.innerHTML = `<input type="text" name="headerKey" placeholder="Header Key" value="${key}" />`;
+            cellValue.innerHTML = `<input type="text" name="headerValue" placeholder="Header Value" value="${value}" />`;
+            cellAction.innerHTML = `<button type="button" class="deleteHeaderBtn">刪除</button>`;
+
+            // 添加刪除按鈕事件
+            row.querySelector('.deleteHeaderBtn').addEventListener('click', function () {
+                headersTable.deleteRow(row.rowIndex);
+                updateHttpPreview();
             });
 
-            // 如果有 Body，則加入 --data 部分
-            if (body) {
-                curlCommand += `--data '${body}' `;
-            }
-
-            // 最後顯示生成的 CURL 命令
-            document.getElementById('curlOutput').value = curlCommand;
-        });
+            // 更新預覽
+            row.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', updateHttpPreview);
+            });
+        }
 
         // 解析 CURL 輸入並顯示在 headers 和 body
         document.getElementById('curlInput').addEventListener('input', function () {
             let curlCommand = document.getElementById('curlInput').value;
 
             let headersTable = document.getElementById('headersTable');
-            headersTable.innerHTML = `<tr><th>Key</th><th>Value</th></tr>`; // Reset table headers
+            // Reset table headers
+            headersTable.innerHTML = `
+                <tr>
+                    <th>Key</th>
+                    <th>Value</th>
+                    <th>操作</th>
+                </tr>
+            `;
 
-            let headerPattern = /-H '([^:]+): ([^']+)'/g;
-            let bodyPattern = /--data '([^']+)'/;
+            // 正則表達式
+            let headerPattern = /-H\s+'([^:]+):\s*([^']+)'/g;
+            let bodyPattern = /--data\s+'([^']+)'/;
 
             let match;
-            while (match = headerPattern.exec(curlCommand)) {
-                let key = match[1];
-                let value = match[2];
-
-                // 插入表格的 Header 資料行
-                let row = headersTable.insertRow();
-                let cell1 = row.insertCell(0);
-                let cell2 = row.insertCell(1);
-                cell1.innerHTML = `<input type="text" name="headerKey" value="${key}" />`;
-                cell2.innerHTML = `<input type="text" name="headerValue" value="${value}" />`;
+            while ((match = headerPattern.exec(curlCommand)) !== null) {
+                let key = match[1].trim();
+                let value = match[2].trim();
+                addHeaderRow(key, value);
             }
 
             let bodyMatch = bodyPattern.exec(curlCommand);
@@ -177,17 +273,255 @@
             } else {
                 document.getElementById('bodyInput').value = '';
             }
+
+            // 嘗試提取 URL
+            let urlMatch = /curl\s+['"]?([^'"\s]+)['"]?/.exec(curlCommand);
+            if (urlMatch) {
+                document.getElementById('urlInput').value = urlMatch[1];
+            }
+
+            updateHttpPreview();
         });
 
         // 增加新的 Header 欄位
         document.getElementById('addHeaderBtn').addEventListener('click', function () {
-            let headersTable = document.getElementById('headersTable');
-            let row = headersTable.insertRow();
-            let cell1 = row.insertCell(0);
-            let cell2 = row.insertCell(1);
-            cell1.innerHTML = `<input type="text" name="headerKey" placeholder="Header Key" />`;
-            cell2.innerHTML = `<input type="text" name="headerValue" placeholder="Header Value" />`;
+            addHeaderRow();
+            updateHttpPreview();
         });
+
+        // 生成 CURL 命令
+        document.getElementById('generateCurlBtn').addEventListener('click', function () {
+            if (!validateForm()) return;
+
+            // 取得 Headers 和 Body 的值
+            let headers = Array.from(document.querySelectorAll('#headersTable .header-row'));
+            let body = document.getElementById('bodyInput').value.trim();
+            let method = document.getElementById('httpMethod').value;
+            let url = document.getElementById('urlInput').value.trim();
+
+            let curlCommand = `curl -X ${method} '${url}' `;
+
+            // 解析 Headers 並生成 -H 部分的 curl
+            headers.forEach(header => {
+                let key = header.querySelector('input[name="headerKey"]').value.trim();
+                let value = header.querySelector('input[name="headerValue"]').value.trim();
+                if (key && value) {
+                    // 處理特殊字符和轉義
+                    key = key.replace(/'/g, `'\\''`);
+                    value = value.replace(/'/g, `'\\''`);
+                    curlCommand += `-H '${key}: ${value}' `;
+                }
+            });
+
+            // 如果有 Body，則加入 --data 部分
+            if (body) {
+                // 處理特殊字符和轉義
+                body = body.replace(/'/g, `'\\''`);
+                curlCommand += `--data '${body}' `;
+            }
+
+            // 最後顯示生成的 CURL 命令
+            document.getElementById('curlOutput').value = curlCommand.trim();
+        });
+
+        // 複製 CURL 命令
+        document.getElementById('copyCurlBtn').addEventListener('click', function () {
+            const curlOutput = document.getElementById('curlOutput').value;
+            navigator.clipboard.writeText(curlOutput).then(() => {
+                alert('CURL 命令已複製到剪貼簿！');
+            }).catch(err => {
+                alert('複製失敗！');
+            });
+        });
+
+        // 添加 Header 行並更新預覽
+        function addHeaderRow(key = '', value = '') {
+            const headersTable = document.getElementById('headersTable');
+            const row = headersTable.insertRow();
+            row.classList.add('header-row');
+
+            const cellKey = row.insertCell(0);
+            const cellValue = row.insertCell(1);
+            const cellAction = row.insertCell(2);
+
+            cellKey.innerHTML = `<input type="text" name="headerKey" placeholder="Header Key" value="${key}" />`;
+            cellValue.innerHTML = `<input type="text" name="headerValue" placeholder="Header Value" value="${value}" />`;
+            cellAction.innerHTML = `<button type="button" class="deleteHeaderBtn">刪除</button>`;
+
+            // 添加刪除按鈕事件
+            row.querySelector('.deleteHeaderBtn').addEventListener('click', function () {
+                headersTable.deleteRow(row.rowIndex);
+                updateHttpPreview();
+            });
+
+            // 更新預覽
+            row.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', updateHttpPreview);
+            });
+        }
+
+        // 導出配置
+        document.getElementById('exportBtn').addEventListener('click', function () {
+            const headers = Array.from(document.querySelectorAll('#headersTable .header-row')).map(row => ({
+                key: row.querySelector('input[name="headerKey"]').value,
+                value: row.querySelector('input[name="headerValue"]').value
+            }));
+            const body = document.getElementById('bodyInput').value;
+            const method = document.getElementById('httpMethod').value;
+            const url = document.getElementById('urlInput').value;
+
+            const config = { headers, body, method, url };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "curl_config.json");
+            downloadAnchor.click();
+        });
+
+        // 導入配置
+        document.getElementById('importBtn').addEventListener('click', function () {
+            document.getElementById('importFile').click();
+        });
+
+        document.getElementById('importFile').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    // 填充 URL
+                    document.getElementById('urlInput').value = config.url || '';
+                    // 填充 HTTP 方法
+                    document.getElementById('httpMethod').value = config.method || 'GET';
+                    // 填充 Headers
+                    const headersTable = document.getElementById('headersTable');
+                    headersTable.innerHTML = `
+                        <tr>
+                            <th>Key</th>
+                            <th>Value</th>
+                            <th>操作</th>
+                        </tr>
+                    `;
+                    config.headers.forEach(header => addHeaderRow(header.key, header.value));
+                    // 填充 Body
+                    document.getElementById('bodyInput').value = config.body || '';
+
+                    updateHttpPreview();
+                } catch (error) {
+                    alert('導入配置失敗，請檢查文件格式。');
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // 載入範例
+        document.getElementById('loadExampleBtn').addEventListener('click', function () {
+            const exampleCurl = "curl -X POST 'https://api.example.com/data' -H 'Authorization: Bearer token' -H 'Content-Type: application/json' --data '{\"key\":\"value\"}'";
+            document.getElementById('curlInput').value = exampleCurl;
+            // 觸發解析事件
+            const event = new Event('input');
+            document.getElementById('curlInput').dispatchEvent(event);
+        });
+
+        // 更新 HTTP 請求預覽
+        function updateHttpPreview() {
+            const method = document.getElementById('httpMethod').value;
+            const url = document.getElementById('urlInput').value.trim();
+            const headers = Array.from(document.querySelectorAll('#headersTable .header-row')).map(row => ({
+                key: row.querySelector('input[name="headerKey"]').value.trim(),
+                value: row.querySelector('input[name="headerValue"]').value.trim()
+            })).filter(header => header.key && header.value);
+            const body = document.getElementById('bodyInput').value.trim();
+
+            let preview = `${method} ${url}\n`;
+
+            headers.forEach(header => {
+                preview += `${header.key}: ${header.value}\n`;
+            });
+
+            if (body) {
+                preview += `\n${body}`;
+            }
+
+            document.getElementById('httpPreview').textContent = preview;
+        }
+
+        // 表單驗證
+        function validateForm() {
+            const url = document.getElementById('urlInput').value.trim();
+            const method = document.getElementById('httpMethod').value;
+            const headers = Array.from(document.querySelectorAll('#headersTable .header-row')).map(row => ({
+                key: row.querySelector('input[name="headerKey"]').value.trim(),
+                value: row.querySelector('input[name="headerValue"]').value.trim()
+            }));
+            const body = document.getElementById('bodyInput').value.trim();
+            const dataFormat = document.getElementById('dataFormat').value;
+
+            // URL 驗證
+            try {
+                new URL(url);
+            } catch (_) {
+                alert('請輸入有效的 URL。');
+                return false;
+            }
+
+            // Headers 驗證
+            for (let header of headers) {
+                if (!header.key || !header.value) {
+                    alert('所有 Headers 的 Key 和 Value 都必須填寫。');
+                    return false;
+                }
+            }
+
+            // Body 驗證（例如 JSON 格式）
+            if (dataFormat === 'json' && body) {
+                try {
+                    JSON.parse(body);
+                } catch (_) {
+                    alert('Body 的 JSON 格式無效。');
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // 數據格式選擇變更事件
+        document.getElementById('dataFormat').addEventListener('change', function () {
+            const format = this.value;
+            const headers = Array.from(document.querySelectorAll('input[name="headerKey"]'));
+            let contentTypeHeader = Array.from(headers).find(header => header.value.toLowerCase() === 'content-type');
+            
+            if (!contentTypeHeader) {
+                addHeaderRow('Content-Type', '');
+                contentTypeHeader = Array.from(document.querySelectorAll('input[name="headerKey"]')).pop();
+            }
+
+            switch(format) {
+                case 'json':
+                    contentTypeHeader.nextElementSibling.value = 'application/json';
+                    break;
+                case 'form':
+                    contentTypeHeader.nextElementSibling.value = 'multipart/form-data';
+                    break;
+                case 'urlencoded':
+                    contentTypeHeader.nextElementSibling.value = 'application/x-www-form-urlencoded';
+                    break;
+                case 'raw':
+                    contentTypeHeader.nextElementSibling.value = 'text/plain';
+                    break;
+                default:
+                    break;
+            }
+
+            updateHttpPreview();
+        });
+
+        // 初始化：如果有預設 CURL 命令，可以在這裡設置
+        // 例如：
+        // document.getElementById('curlInput').value = "curl 'https://api.example.com/data' -H 'Authorization: Bearer token' --data '{\"key\":\"value\"}'";
     </script>
 </body>
 </html>
