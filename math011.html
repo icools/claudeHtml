@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triangle Noise Art</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+</head>
+<body>
+    <script>
+        let a = (x, y, d = exp(mag(k = x - 200, e = y - 200) / (9 + 30 * noise(x / 30, y / 30 - t))), q = 1 + atan(cos(d / 29 - t) * 8)) => [x + k / d * q, y + e / d * q];
+        let t = 0;
+
+        function setup() {
+            createCanvas(w = 400, w);
+            noFill();
+        }
+
+        function draw() {
+            t += 0.03;
+            background(248);
+
+            for (let y = 0; y < w; y += 3) {
+                for (let x = 100; x < 300; x += 3) {
+                    triangle(...[a(x, y), a(x, y + 3), a(x + 3, y)].flat());
+                }
+            }
+        }
+    </script>
+</body>
+</html>
