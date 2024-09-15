@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Triangle Art</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+</head>
+<body>
+    <script>
+        let a = (x, y, d = exp(mag(k = x - 200, e = y - 200) / (9 + 30 * noise(x / 50, y / 50 - t))), q = 1 + atan(cos(d / 29 - t) * 8)) => [x + k / d * q, y + e / d * q];
+        let t = 0;
+
+        function setup() {
+            createCanvas(w = 400, w);
+            noStroke(); // 移除邊框
+        }
+
+        function draw() {
+            t += 0.05; // 加快變化速度
+            background(20, 20, 50); // 深色背景
+
+            for (let y = 0; y < w; y += 5) { // 增加Y間距，生成更多隨機圖形
+                for (let x = 50; x < 350; x += 5) { // 擴大X範圍，生成更多圖形
+                    let p1 = a(x, y);
+                    let p2 = a(x, y + 5);
+                    let p3 = a(x + 5, y);
+
+                    // 計算顏色，根據 x, y 座標和噪聲值變化
+                    let col = noise(x / 100, y / 100 - t) * 255;
+                    fill(col, 100, 255 - col, 150); // 動態顏色
+
+                    triangle(...p1, ...p2, ...p3); // 畫三角形
+                }
+            }
+        }
+    </script>
+</body>
+</html>
