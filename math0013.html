@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Art with Elements</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+</head>
+<body>
+    <script>
+        let a = (x, y, d = exp(mag(k = x - 200, e = y - 200) / (9 + 30 * noise(x / 50, y / 50 - t))), q = 1 + atan(cos(d / 29 - t) * 8)) => [x + k / d * q, y + e / d * q];
+        let stars = [];
+        let particles = [];
+        let t = 0;
+
+        function setup() {
+            createCanvas(w = 400, w);
+            noStroke();
+            // 創建星星背景
+            for (let i = 0; i < 100; i++) {
+                stars.push({
+                    x: random(width),
+                    y: random(height),
+                    size: random(1, 3),
+                    twinkle: random(0.05, 0.2)
+                });
+            }
+        }
+
+        function draw() {
+            t += 0.05; // 時間增量
+            
+            // 背景星空效果
+            background(10, 10, 30); // 深色背景
+            for (let star of stars) {
+                fill(255);
+                star.size += sin(t * star.twinkle) * 0.5; // 星星閃爍效果
+                ellipse(star.x, star.y, star.size);
+            }
+
+            // 動態三角形
+            for (let y = 0; y < w; y += 5) {
+                for (let x = 50; x < 350; x += 5) {
+                    let p1 = a(x, y);
+                    let p2 = a(x, y + 5);
+                    let p3 = a(x + 5, y);
+
+                    // 動態顏色與滑鼠距離相關
+                    let col = noise(x / 100, y / 100 - t) * 255;
+                    let dMouse = dist(mouseX, mouseY, x, y);
+                    let factor = constrain(1 / (dMouse / 50), 0, 1); // 根據滑鼠距離改變顏色與大小
+                    fill(col * factor, 100, 255 - col * factor, 150);
+
+                    // 畫三角形
+                    triangle(...p1, ...p2, ...p3);
+                }
+            }
+
+            // 粒子效果
+            particles.push({
+                x: random(width),
+                y: random(height),
+                size: random(5, 10),
+                alpha: 255
+            });
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                fill(255, 255, 255, p.alpha);
+                ellipse(p.x, p.y, p.size);
+                p.size *= 0.95; // 漸漸縮小
+                p.alpha -= 5; // 漸漸消失
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            // 加入動態線條
+            stroke(255, 100); // 半透明白色線條
+            strokeWeight(0.5);
+            for (let i = 0; i < 20; i++) {
+                let x1 = random(width), y1 = random(height);
+                let x2 = random(width), y2 = random(height);
+                line(x1, y1, x2, y2);
+            }
+            noStroke();
+        }
+    </script>
+</body>
+</html>
