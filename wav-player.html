@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>音頻視覺化播放器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* 全局樣式 */
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1f1c2c, #928dab);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        /* 上傳按鈕樣式 */
+        .upload-container {
+            margin-bottom: 20px;
+        }
+
+        .upload-container input[type="file"] {
+            display: none;
+        }
+
+        .upload-label {
+            background-color: #6a82fb;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .upload-label:hover {
+            background-color: #fc5c7d;
+        }
+
+        /* 播放控制區域 */
+        .controls {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .controls button {
+            background-color: transparent;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            margin: 0 10px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .controls button:hover {
+            color: #fc5c7d;
+        }
+
+        .controls input[type="range"] {
+            width: 100px;
+        }
+
+        /* 波形畫布 */
+        #canvas {
+            width: 100%;
+            max-width: 800px;
+            height: 200px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 600px) {
+            .controls button {
+                font-size: 20px;
+            }
+
+            #canvas {
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>音頻視覺化播放器</h1>
+
+    <div class="upload-container">
+        <label for="upload" class="upload-label">上傳音頻文件</label>
+        <input type="file" id="upload" accept="audio/*">
+    </div>
+
+    <div class="controls" id="controls" style="display: none;">
+        <button id="play-pause">&#9658;</button>
+        <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <!-- 音頻元素 -->
+    <audio id="audio" crossorigin="anonymous"></audio>
+
+    <script>
+        // 獲取元素
+        const upload = document.getElementById('upload');
+        const playPauseBtn = document.getElementById('play-pause');
+        const volumeControl = document.getElementById('volume');
+        const audio = document.getElementById('audio');
+        const canvas = document.getElementById('canvas');
+        const controls = document.getElementById('controls');
+        const canvasCtx = canvas.getContext('2d');
+
+        let audioContext;
+        let analyser;
+        let dataArray;
+        let bufferLength;
+        let source;
+        let animationId;
+
+        // 音頻上傳事件
+        upload.addEventListener('change', function() {
+            const files = this.files;
+            if (files.length === 0) return;
+
+            const file = files[0];
+            const fileURL = URL.createObjectURL(file);
+            audio.src = fileURL;
+
+            // 初始化音頻分析
+            initAudioContext();
+
+            controls.style.display = 'flex';
+        });
+
+        // 初始化音頻上下文
+        function initAudioContext() {
+            if (audioContext) {
+                audioContext.close();
+            }
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+
+            source = audioContext.createMediaElementSource(audio);
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+
+            analyser.fftSize = 256;
+            bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+
+            draw();
+        }
+
+        // 播放/暫停控制
+        playPauseBtn.addEventListener('click', function() {
+            if (audio.paused) {
+                audio.play();
+                this.innerHTML = '&#10074;&#10074;';
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            } else {
+                audio.pause();
+                this.innerHTML = '&#9658;';
+            }
+        });
+
+        // 音量控制
+        volumeControl.addEventListener('input', function() {
+            audio.volume = this.value;
+        });
+
+        // 繪製波形
+        function draw() {
+            animationId = requestAnimationFrame(draw);
+
+            analyser.getByteFrequencyData(dataArray);
+
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const barWidth = (canvas.width / bufferLength) * 2.5;
+            let barHeight;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                barHeight = dataArray[i];
+
+                const r = barHeight + (25 * (i / bufferLength));
+                const g = 250 * (i / bufferLength);
+                const b = 50;
+
+                canvasCtx.fillStyle = `rgb(${r},${g},${b})`;
+                canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
+
+                x += barWidth + 1;
+            }
+        }
+
+        // 確保在離開頁面時停止動畫
+        window.addEventListener('beforeunload', function() {
+            cancelAnimationFrame(animationId);
+            if (audioContext) {
+                audioContext.close();
+            }
+        });
+
+        // 調整畫布尺寸
+        function resizeCanvas() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+    </script>
+</body>
+</html>
