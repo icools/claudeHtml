@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D ASCII Bunny</title>
+  <style>
+    ::selection {
+      background: #505050;
+    }
+
+    ::-moz-selection {
+      background: #505050;
+    }
+
+    html,
+    body,
+    .container {
+      overflow: hidden;
+      background-color: black;
+      height: 100%;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      color: white;
+      font-family: monospace;
+      white-space: pre;
+      line-height: 7px;
+      letter-spacing: 3px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <pre id="d"></pre>
+  </div>
+  <script>
+    const pretag = document.getElementById("d");
+
+    let A = 0; // Rotation angle around X-axis
+    let B = 0; // Rotation angle around Y-axis
+
+    const asciiChars = " .:-=+*#%@";
+
+    const bunnyPoints = [];
+
+    // 創建更詳細的兔子模型
+    const createBunnyModel = () => {
+      // 兔子的頭部（橢球體）
+      for (let theta = 0; theta < Math.PI * 2; theta += 0.1) {
+        for (let phi = 0; phi < Math.PI; phi += 0.1) {
+          const x = 0.8 * Math.sin(phi) * Math.cos(theta);
+          const y = 1.0 * Math.sin(phi) * Math.sin(theta);
+          const z = 1.2 * Math.cos(phi);
+          bunnyPoints.push({ x, y, z, nx: x, ny: y, nz: z });
+        }
+      }
+
+      // 左耳
+      for (let theta = 0; theta < Math.PI * 2; theta += 0.2) {
+        for (let h = 0; h < 1; h += 0.1) {
+          const x = 0.2 * Math.cos(theta);
+          const y = -0.5 + h * 1.5;
+          const z = 0.2 * Math.sin(theta) + 1.2;
+          bunnyPoints.push({ x, y, z, nx: x, ny: y, nz: z });
+        }
+      }
+
+      // 右耳
+      for (let theta = 0; theta < Math.PI * 2; theta += 0.2) {
+        for (let h = 0; h < 1; h += 0.1) {
+          const x = 0.2 * Math.cos(theta);
+          const y = 0.5 - h * 1.5;
+          const z = 0.2 * Math.sin(theta) + 1.2;
+          bunnyPoints.push({ x, y, z, nx: x, ny: y, nz: z });
+        }
+      }
+
+      // 兔子的身體（圓柱體）
+      for (let theta = 0; theta < Math.PI * 2; theta += 0.1) {
+        for (let h = -1; h < 0.5; h += 0.1) {
+          const x = 0.8 * Math.cos(theta);
+          const y = h;
+          const z = 0.8 * Math.sin(theta);
+          bunnyPoints.push({ x, y, z, nx: x, ny: y, nz: z });
+        }
+      }
+
+      // 兔子的尾巴（小球體）
+      for (let theta = 0; theta < Math.PI * 2; theta += 0.2) {
+        for (let phi = 0; phi < Math.PI; phi += 0.2) {
+          const x = 0.3 * Math.sin(phi) * Math.cos(theta);
+          const y = -1.2 + 0.3 * Math.cos(phi);
+          const z = 0.3 * Math.sin(phi) * Math.sin(theta);
+          bunnyPoints.push({ x, y, z, nx: x, ny: y, nz: z });
+        }
+      }
+    };
+
+    createBunnyModel();
+
+    const asciiframe = () => {
+      const b = [];
+      const zBuffer = [];
+      for (let k = 0; k < 80 * 40; k++) {
+        b[k] = k % 80 === 79 ? "\n" : " ";
+        zBuffer[k] = 0;
+      }
+
+      A += 0.03;
+      B += 0.02;
+
+      const cosA = Math.cos(A);
+      const sinA = Math.sin(A);
+      const cosB = Math.cos(B);
+      const sinB = Math.sin(B);
+
+      bunnyPoints.forEach(point => {
+        // 旋轉 X 軸
+        let x = point.x;
+        let y = point.y * cosA - point.z * sinA;
+        let z = point.y * sinA + point.z * cosA;
+
+        // 旋轉 Y 軸
+        const x1 = x * cosB + z * sinB;
+        const y1 = y;
+        const z1 = -x * sinB + z * cosB;
+
+        // 投影
+        const K2 = 5;
+        const K1 = 20;
+        const ooz = 1 / (z1 + K2); // "one over z"
+
+        const xp = Math.floor(K1 * ooz * x1 + 40);
+        const yp = Math.floor(K1 * ooz * y1 + 20);
+        const idx = xp + 80 * yp;
+
+        if (idx >= 0 && idx < 80 * 40) {
+          // 計算法向量來計算亮度
+          const nx = point.nx;
+          const ny = point.ny;
+          const nz = point.nz;
+
+          // 旋轉法向量
+          let nx_rot = nx;
+          let ny_rot = ny * cosA - nz * sinA;
+          let nz_rot = ny * sinA + nz * cosA;
+
+          nx_rot = nx_rot * cosB + nz_rot * sinB;
+          const ny_final = ny_rot;
+          const nz_final = -nx_rot * sinB + nz_rot * cosB;
+
+          // 簡單的光照模型（假設光源來自 Z 軸正方向）
+          const luminance = nz_final / Math.sqrt(nx_rot * nx_rot + ny_final * ny_final + nz_final * nz_final);
+
+          // 映射到 ASCII 字符
+          const charIdx = Math.floor((luminance + 1) / 2 * (asciiChars.length - 1));
+          const char = asciiChars[charIdx] || asciiChars[0];
+
+          if (ooz > zBuffer[idx]) {
+            zBuffer[idx] = ooz;
+            b[idx] = char;
+          }
+        }
+      });
+
+      pretag.innerHTML = b.join("");
+    };
+
+    setInterval(asciiframe, 50);
+  </script>
+</body>
+
+</html>
