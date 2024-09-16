@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>全螢幕音頻視覺化播放器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* 全局樣式 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* 上傳按鈕樣式 */
+        .upload-container {
+            position: relative;
+        }
+
+        .upload-container input[type="file"] {
+            display: none;
+        }
+
+        .upload-label {
+            background-color: rgba(106, 130, 251, 0.8);
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            color: #fff;
+        }
+
+        .upload-label:hover {
+            background-color: rgba(252, 92, 125, 0.8);
+        }
+
+        /* 播放控制區域 */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .controls button {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .controls button:hover {
+            background-color: rgba(252, 92, 125, 0.8);
+            transform: scale(1.1);
+        }
+
+        .controls input[type="range"] {
+            width: 100px;
+        }
+
+        /* 全螢幕按鈕 */
+        .fullscreen-btn {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: #fff;
+            font-size: 20px;
+            padding: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .fullscreen-btn:hover {
+            background-color: rgba(252, 92, 125, 0.8);
+            transform: scale(1.1);
+        }
+
+        /* 波形畫布 */
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 600px) {
+            .controls button {
+                font-size: 20px;
+                padding: 8px;
+            }
+
+            .fullscreen-btn {
+                font-size: 18px;
+                padding: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 控制面板 -->
+    <div id="overlay">
+        <div class="upload-container">
+            <label for="upload" class="upload-label">上傳音頻文件</label>
+            <input type="file" id="upload" accept="audio/*">
+        </div>
+        <div class="controls" id="controls" style="display: none;">
+            <button id="play-pause">&#9658;</button>
+            <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+            <button id="fullscreen" class="fullscreen-btn">全螢幕</button>
+        </div>
+    </div>
+
+    <!-- 波形畫布 -->
+    <canvas id="canvas"></canvas>
+
+    <!-- 音頻元素 -->
+    <audio id="audio" crossorigin="anonymous"></audio>
+
+    <script>
+        // 獲取元素
+        const upload = document.getElementById('upload');
+        const playPauseBtn = document.getElementById('play-pause');
+        const volumeControl = document.getElementById('volume');
+        const audio = document.getElementById('audio');
+        const canvas = document.getElementById('canvas');
+        const controls = document.getElementById('controls');
+        const fullscreenBtn = document.getElementById('fullscreen');
+        const canvasCtx = canvas.getContext('2d');
+
+        let audioContext;
+        let analyser;
+        let dataArray;
+        let bufferLength;
+        let source;
+        let animationId;
+
+        // 音頻上傳事件
+        upload.addEventListener('change', function() {
+            const files = this.files;
+            if (files.length === 0) return;
+
+            const file = files[0];
+            const fileURL = URL.createObjectURL(file);
+            audio.src = fileURL;
+
+            // 初始化音頻分析
+            initAudioContext();
+
+            controls.style.display = 'flex';
+        });
+
+        // 初始化音頻上下文
+        function initAudioContext() {
+            if (audioContext) {
+                audioContext.close();
+            }
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+
+            source = audioContext.createMediaElementSource(audio);
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+
+            analyser.fftSize = 512;
+            bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+
+            draw();
+        }
+
+        // 播放/暫停控制
+        playPauseBtn.addEventListener('click', function() {
+            if (audio.paused) {
+                audio.play();
+                this.innerHTML = '&#10074;&#10074;';
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            } else {
+                audio.pause();
+                this.innerHTML = '&#9658;';
+            }
+        });
+
+        // 音量控制
+        volumeControl.addEventListener('input', function() {
+            audio.volume = this.value;
+        });
+
+        // 全螢幕控制
+        fullscreenBtn.addEventListener('click', function() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                this.textContent = '退出全螢幕';
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                    this.textContent = '全螢幕';
+                }
+            }
+        });
+
+        // 繪製波形與特效
+        function draw() {
+            animationId = requestAnimationFrame(draw);
+
+            analyser.getByteFrequencyData(dataArray);
+
+            canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const barWidth = (canvas.width / bufferLength) * 2.5;
+            let barHeight;
+            let x = 0;
+
+            // 繪製頻譜
+            for (let i = 0; i < bufferLength; i++) {
+                barHeight = dataArray[i];
+
+                const r = barHeight + (25 * (i / bufferLength));
+                const g = 250 * (i / bufferLength);
+                const b = 50;
+
+                canvasCtx.fillStyle = `rgb(${r},${g},${b})`;
+                canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
+
+                x += barWidth + 1;
+            }
+
+            // 添加粒子效果
+            createParticles();
+        }
+
+        // 粒子系統
+        const particles = [];
+        const maxParticles = 100;
+
+        function createParticles() {
+            if (particles.length > maxParticles) return;
+
+            const particle = {
+                x: Math.random() * canvas.width,
+                y: canvas.height / 2,
+                radius: Math.random() * 3 + 1,
+                color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+                speed: Math.random() * 2 - 1,
+                direction: Math.random() * Math.PI * 2
+            };
+
+            particles.push(particle);
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += Math.cos(p.direction) * p.speed;
+                p.y += Math.sin(p.direction) * p.speed;
+
+                // 基於音頻數據改變粒子大小和顏色
+                const freqIndex = Math.floor(p.x / canvas.width * bufferLength);
+                const freqValue = dataArray[freqIndex];
+                p.radius = freqValue / 50;
+
+                // 移除超出畫布的粒子
+                if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                canvasCtx.beginPath();
+                canvasCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                canvasCtx.fillStyle = p.color;
+                canvasCtx.fill();
+            });
+        }
+
+        // 更新並繪製粒子
+        function animateParticles() {
+            updateParticles();
+            drawParticles();
+        }
+
+        // 在主繪製循環中添加粒子動畫
+        function drawWithParticles() {
+            animationId = requestAnimationFrame(drawWithParticles);
+
+            analyser.getByteFrequencyData(dataArray);
+
+            canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const barWidth = (canvas.width / bufferLength) * 2.5;
+            let barHeight;
+            let x = 0;
+
+            // 繪製頻譜
+            for (let i = 0; i < bufferLength; i++) {
+                barHeight = dataArray[i];
+
+                const r = barHeight + (25 * (i / bufferLength));
+                const g = 250 * (i / bufferLength);
+                const b = 50;
+
+                canvasCtx.fillStyle = `rgb(${r},${g},${b})`;
+                canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
+
+                x += barWidth + 1;
+            }
+
+            // 粒子效果
+            animateParticles();
+        }
+
+        // 選擇主繪製循環
+        function draw() {
+            animationId = requestAnimationFrame(drawWithParticles);
+
+            analyser.getByteFrequencyData(dataArray);
+
+            canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const barWidth = (canvas.width / bufferLength) * 2.5;
+            let barHeight;
+            let x = 0;
+
+            // 繪製頻譜
+            for (let i = 0; i < bufferLength; i++) {
+                barHeight = dataArray[i];
+
+                const r = barHeight + (25 * (i / bufferLength));
+                const g = 250 * (i / bufferLength);
+                const b = 50;
+
+                canvasCtx.fillStyle = `rgb(${r},${g},${b})`;
+                canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
+
+                x += barWidth + 1;
+            }
+
+            // 粒子效果
+            animateParticles();
+        }
+
+        // 確保在離開頁面時停止動畫
+        window.addEventListener('beforeunload', function() {
+            cancelAnimationFrame(animationId);
+            if (audioContext) {
+                audioContext.close();
+            }
+        });
+
+        // 調整畫布尺寸
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+    </script>
+</body>
+</html>
