@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epic Dynamic ASCII Music Player</title>
+    <style>
+        body {
+            background: radial-gradient(circle, black, #222);
+            color: lime;
+            font-family: monospace;
+            text-align: center;
+            padding-top: 50px;
+            overflow: hidden;
+        }
+        .ascii-art {
+            font-size: 24px;
+            color: #0f0;
+            margin-bottom: 20px;
+            white-space: pre;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px magenta, 0 0 20px cyan;
+            animation: glow 1.5s infinite alternate;
+        }
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px magenta, 0 0 20px cyan;
+            }
+            to {
+                text-shadow: 0 0 20px lime, 0 0 30px yellow;
+            }
+        }
+        .controls {
+            margin-top: 20px;
+            color: white;
+        }
+        input[type="file"] {
+            margin-top: 10px;
+        }
+        canvas {
+            display: block;
+            margin: 20px auto;
+            background-color: black;
+            border: 2px solid lime;
+            box-shadow: 0 0 20px lime;
+        }
+        button {
+            background-color: lime;
+            border: none;
+            padding: 10px 20px;
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: cyan;
+        }
+    </style>
+</head>
+<body>
+
+<div class="ascii-art">
+    ___ ___  _   _ _  _   _   _  ___ _   _ <br/>
+   / __/ _ \| | | | || | | | | |/ _ \ | | |<br/>
+  | (_| (_) | |_| | || |_| |_| |  __/ |_| |<br/>
+   \___\___/ \__,_|\__\__,_|\__,_|\___|\__,_|<br/>
+</div>
+
+<div class="controls">
+    <div id="status">No file uploaded</div>
+    <input type="file" id="audioFile" accept="audio/*">
+    <button id="playButton" disabled>Play</button>
+    <br/><br/>
+    <progress id="progressBar" value="0" max="1" style="width: 300px;"></progress>
+</div>
+
+<canvas id="asciiCanvas" width="800" height="400"></canvas>
+
+<audio id="audioPlayer" controls style="display:none;"></audio>
+
+<script>
+    const audioPlayer = document.getElementById('audioPlayer');
+    const playButton = document.getElementById('playButton');
+    const progressBar = document.getElementById('progressBar');
+    const status = document.getElementById('status');
+    const audioFileInput = document.getElementById('audioFile');
+    const canvas = document.getElementById('asciiCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let audioContext, analyser, dataArray, bufferLength;
+
+    audioFileInput.addEventListener('change', function () {
+        const file = this.files[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            audioPlayer.src = url;
+            status.textContent = `Loaded: ${file.name}`;
+            playButton.disabled = false;
+
+            // 初始化 Web Audio API
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaElementSource(audioPlayer);
+            analyser = audioContext.createAnalyser();
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+            analyser.fftSize = 256;
+            bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+
+            drawEpicAsciiArt(); // 開始繪製動態 ASCII 藝術
+        }
+    });
+
+    playButton.addEventListener('click', function () {
+        if (audioPlayer.paused) {
+            audioPlayer.play();
+            audioContext.resume(); // 恢復音訊上下文以播放
+            playButton.textContent = 'Pause';
+        } else {
+            audioPlayer.pause();
+            playButton.textContent = 'Play';
+        }
+    });
+
+    audioPlayer.addEventListener('timeupdate', function () {
+        progressBar.value = audioPlayer.currentTime / audioPlayer.duration;
+    });
+
+    audioPlayer.addEventListener('ended', function () {
+        playButton.textContent = 'Play';
+        progressBar.value = 0;
+    });
+
+    function drawEpicAsciiArt() {
+        requestAnimationFrame(drawEpicAsciiArt);
+        analyser.getByteFrequencyData(dataArray);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const asciiChars = ['@', '#', '%', '&', '*', '=', '-', ':', '.', ' '];
+        const barWidth = (canvas.width / bufferLength) * 2.5;
+        let barHeight;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+            barHeight = dataArray[i] / 1.5;
+
+            // 酷炫的動態顏色
+            const hue = (i * 10) % 360;
+            ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+
+            const charIndex = Math.floor(barHeight / 25);
+            const asciiChar = asciiChars[charIndex] || ' ';
+
+            // ASCII 字符繪製的動態波形
+            ctx.font = `${Math.floor(barHeight / 10) + 10}px monospace`;
+            ctx.fillText(asciiChar, x, canvas.height - barHeight);
+
+            x += barWidth;
+        }
+    }
+</script>
+
+</body>
+</html>
