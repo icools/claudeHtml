@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D ASCII Bunny</title>
+  <style>
+    ::selection {
+      background: #505050;
+    }
+
+    ::-moz-selection {
+      background: #505050;
+    }
+
+    html,
+    body,
+    .container {
+      overflow: hidden;
+      background-color: black;
+      height: 100%;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      color: white;
+      font-family: monospace;
+      white-space: pre;
+      line-height: 8px;
+      letter-spacing: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <pre id="d"></pre>
+  </div>
+  <script>
+    const pretag = document.getElementById("d");
+
+    let A = 0; // Rotation angle around X-axis
+    let B = 0; // Rotation angle around Y-axis
+
+    const asciiChars = ".,-~:;=!*#$@";
+
+    const bunnyPoints = [];
+
+    // 創建簡化的兔子模型：頭部（球體）和兩個耳朵（橢圓體）
+    const createBunnyModel = () => {
+      const radius = 1;
+      const earLength = 2;
+      const earWidth = 0.5;
+
+      // 頭部（球體）
+      for (let theta = 0; theta < Math.PI * 2; theta += 0.2) {
+        for (let phi = 0; phi < Math.PI; phi += 0.2) {
+          const x = radius * Math.sin(phi) * Math.cos(theta);
+          const y = radius * Math.sin(phi) * Math.sin(theta);
+          const z = radius * Math.cos(phi);
+          bunnyPoints.push({ x, y, z, nx: x, ny: y, nz: z }); // nx, ny, nz 是法向量
+        }
+      }
+
+      // 左耳
+      for (let theta = -Math.PI / 6; theta < Math.PI / 6; theta += 0.2) {
+        for (let phi = Math.PI / 6; phi < Math.PI * 5 / 6; phi += 0.2) {
+          const x = (radius + earLength * Math.sin(phi) * Math.cos(theta)) * 0.5;
+          const y = radius * 0.5 + earWidth * Math.cos(theta);
+          const z = earLength * Math.cos(phi) + radius;
+          bunnyPoints.push({ x, y, z, nx: x, ny: y, nz: z });
+        }
+      }
+
+      // 右耳
+      for (let theta = -Math.PI / 6; theta < Math.PI / 6; theta += 0.2) {
+        for (let phi = Math.PI / 6; phi < Math.PI * 5 / 6; phi += 0.2) {
+          const x = -(radius + earLength * Math.sin(phi) * Math.cos(theta)) * 0.5;
+          const y = radius * 0.5 + earWidth * Math.cos(theta);
+          const z = earLength * Math.cos(phi) + radius;
+          bunnyPoints.push({ x, y, z, nx: x, ny: y, nz: z });
+        }
+      }
+    };
+
+    createBunnyModel();
+
+    const asciiframe = () => {
+      const b = [];
+      const zBuffer = [];
+      for (let k = 0; k < 80 * 22; k++) {
+        b[k] = k % 80 === 79 ? "\n" : " ";
+        zBuffer[k] = 0;
+      }
+
+      A += 0.04;
+      B += 0.02;
+
+      const cosA = Math.cos(A);
+      const sinA = Math.sin(A);
+      const cosB = Math.cos(B);
+      const sinB = Math.sin(B);
+
+      bunnyPoints.forEach(point => {
+        // 旋轉 X 軸
+        let x = point.x;
+        let y = point.y * cosA - point.z * sinA;
+        let z = point.y * sinA + point.z * cosA;
+
+        // 旋轉 Y 軸
+        const x1 = x * cosB + z * sinB;
+        const y1 = y;
+        const z1 = -x * sinB + z * cosB;
+
+        // 投影
+        const K2 = 5;
+        const K1 = 80;
+        const ooz = 1 / (z1 + K2); // "one over z"
+
+        const xp = Math.floor(K1 * ooz * x1) + 40;
+        const yp = Math.floor(K1 * ooz * y1) + 12;
+        const idx = xp + 80 * yp;
+
+        if (idx >= 0 && idx < 80 * 22) {
+          // 計算法向量來計算亮度
+          const nx = point.nx;
+          const ny = point.ny;
+          const nz = point.nz;
+
+          // 旋轉法向量
+          let nx_rot = nx;
+          let ny_rot = ny * cosA - nz * sinA;
+          let nz_rot = ny * sinA + nz * cosA;
+
+          nx_rot = nx_rot * cosB + nz_rot * sinB;
+          const ny_final = ny_rot;
+          const nz_final = -nx_rot * sinB + nz_rot * cosB;
+
+          // 簡單的光照模型（假設光源來自 Z 軸正方向）
+          const luminance = nz_final;
+
+          // 映射到 ASCII 字符
+          const charIdx = Math.floor((luminance + 1) / 2 * (asciiChars.length - 1));
+          const char = asciiChars[charIdx] || asciiChars[0];
+
+          if (ooz > zBuffer[idx]) {
+            zBuffer[idx] = ooz;
+            b[idx] = char;
+          }
+        }
+      });
+
+      pretag.innerHTML = b.join("");
+    };
+
+    setInterval(asciiframe, 50);
+  </script>
+</body>
+
+</html>
