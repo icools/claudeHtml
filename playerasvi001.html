@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>酷炫動態 ASCII 音樂播放器</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: radial-gradient(circle, #000000, #1a1a1a);
+            color: #00FF00;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .ascii-art {
+            font-size: 22px;
+            color: #00FF00;
+            white-space: pre;
+            margin-top: 20px;
+            text-shadow: 0 0 10px #FF00FF, 0 0 20px #00FFFF;
+            animation: flicker 2s infinite alternate;
+        }
+
+        @keyframes flicker {
+            from {
+                text-shadow: 0 0 10px #FF00FF, 0 0 20px #00FFFF;
+            }
+            to {
+                text-shadow: 0 0 20px #FF00FF, 0 0 30px #00FFFF;
+            }
+        }
+
+        .controls {
+            margin-top: 30px;
+            color: #FFFFFF;
+            z-index: 1;
+            position: relative;
+        }
+
+        input[type="file"] {
+            margin-top: 10px;
+            padding: 10px;
+            background: #333;
+            border: 1px solid #00FF00;
+            color: #00FF00;
+            cursor: pointer;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #00FF00;
+            border: none;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #00CED1;
+        }
+
+        progress {
+            width: 300px;
+            height: 20px;
+            margin-top: 20px;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        progress::-webkit-progress-bar {
+            background: #555;
+            border-radius: 10px;
+        }
+
+        progress::-webkit-progress-value {
+            background: #00FF00;
+            border-radius: 10px;
+        }
+
+        canvas {
+            display: block;
+            margin: 30px auto;
+            background-color: #000;
+            border: 2px solid #00FF00;
+            box-shadow: 0 0 30px #00FF00;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ascii-art">
+        ____  _    _ _____ _     _____ ____  _   _  _____ _______ <br/>
+        |  _ \| |  | |  ___| |   |  ___/ __ \| \ | |/  ___|__   __|<br/>
+        | |_) | |  | | |__ | |   | |__| |  | |  \| |\ `--.   | |   <br/>
+        |  _ <| |  | |  __|| |   |  __| |  | | . ` | `--. \  | |   <br/>
+        | |_) | |__| | |___| |___| |__| |__| | |\  |/\__/ /  | |   <br/>
+        |____/ \____/ \____/\____/\____/\____/|_| \_/\____/   |_|   <br/>
+    </div>
+
+    <div class="controls">
+        <div id="status">尚未上傳音樂檔案</div>
+        <input type="file" id="audioFile" accept="audio/*">
+        <br/>
+        <button id="playButton" disabled>播放</button>
+        <br/><br/>
+        <progress id="progressBar" value="0" max="1"></progress>
+    </div>
+
+    <canvas id="asciiCanvas" width="1000" height="500"></canvas>
+
+    <audio id="audioPlayer" controls style="display:none;"></audio>
+
+    <script>
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playButton = document.getElementById('playButton');
+        const progressBar = document.getElementById('progressBar');
+        const status = document.getElementById('status');
+        const audioFileInput = document.getElementById('audioFile');
+        const canvas = document.getElementById('asciiCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let audioContext, analyser, dataArray, bufferLength, source;
+
+        audioFileInput.addEventListener('change', function () {
+            const file = this.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                audioPlayer.src = url;
+                status.textContent = `已加載: ${file.name}`;
+                playButton.disabled = false;
+
+                // 初始化 Web Audio API
+                if (audioContext) {
+                    audioContext.close();
+                }
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                source = audioContext.createMediaElementSource(audioPlayer);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 512;
+                bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+
+                drawVisualization();
+            }
+        });
+
+        playButton.addEventListener('click', function () {
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                audioContext.resume(); // 恢復音訊上下文以播放
+                playButton.textContent = '暫停';
+            } else {
+                audioPlayer.pause();
+                playButton.textContent = '播放';
+            }
+        });
+
+        audioPlayer.addEventListener('timeupdate', function () {
+            progressBar.value = audioPlayer.currentTime / audioPlayer.duration;
+        });
+
+        audioPlayer.addEventListener('ended', function () {
+            playButton.textContent = '播放';
+            progressBar.value = 0;
+        });
+
+        function drawVisualization() {
+            requestAnimationFrame(drawVisualization);
+            analyser.getByteFrequencyData(dataArray);
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const asciiChars = ['@', '#', '8', '&', 'o', ':', '*', '.', ' '];
+            const charWidth = 10;
+            const charHeight = 10;
+            const cols = Math.floor(canvas.width / charWidth);
+            const rows = Math.floor(canvas.height / charHeight);
+
+            ctx.font = `${charHeight}px monospace`;
+            ctx.textBaseline = 'top';
+
+            // 清除畫布
+            // ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < cols; i++) {
+                const value = dataArray[i];
+                const charIndex = Math.floor((value / 255) * (asciiChars.length - 1));
+                const asciiChar = asciiChars[charIndex] || ' ';
+                
+                // 計算顏色
+                const hue = (i * 4) % 360;
+                const saturation = 100;
+                const lightness = value / 255 * 50 + 25; // 25% 至 75%
+
+                ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+
+                // 繪製字符
+                ctx.fillText(asciiChar, i * charWidth, canvas.height - value / 2);
+            }
+
+            // 可選：增加一些粒子效果
+            // particleEffect(dataArray);
+        }
+
+        // 可選：粒子效果函數
+        /*
+        function particleEffect(dataArray) {
+            // 實現粒子效果的代碼
+        }
+        */
+    </script>
+
+</body>
+</html>
