@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segment Anything Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            display: flex;
+        }
+        #video-section, #controls {
+            margin: 20px;
+        }
+        img {
+            max-width: 500px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Video Stream Segmentation with SAM</h2>
+<div id="container">
+    <div id="video-section">
+        <video id="video" width="500" controls muted></video>
+    </div>
+    <div id="controls">
+        <input type="text" id="videoUrl" placeholder="Enter stream URL">
+        <button onclick="playVideo()">Play</button>
+        <button onclick="captureAndSegment()">Capture & Segment</button>
+    </div>
+</div>
+
+<h3>Segmented Images</h3>
+<div id="output"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<script>
+    const videoElement = document.getElementById('video');
+    
+    // Function to load and play video from the given URL
+    function playVideo() {
+        const url = document.getElementById('videoUrl').value;
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(url);
+            hls.attachMedia(videoElement);
+            videoElement.play();
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            videoElement.src = url;
+            videoElement.play();
+        } else {
+            alert("HLS not supported in this browser.");
+        }
+    }
+
+    // Load SAM model
+    let session;
+    async function loadModel() {
+        session = await ort.InferenceSession.create('path_to_sam_model.onnx');
+        console.log("Model loaded");
+    }
+    loadModel(); // Load the model on page load
+
+    // Function to capture the current frame and perform segmentation
+    async function captureAndSegment() {
+        if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+            alert("Video not loaded or has zero width/height.");
+            return;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = videoElement.videoWidth;
+        canvas.height = videoElement.videoHeight;
+        const context = canvas.getContext('2d');
+        
+        // Draw the current frame from the video onto the canvas
+        context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        
+        // Get image data
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Prepare input tensor for SAM model
+        const inputTensor = new ort.Tensor('float32', imageData.data, [1, 3, canvas.height, canvas.width]);
+        
+        // Run the SAM model to get the segmentation result
+        const results = await session.run({ input: inputTensor });
+        
+        // Assuming 'output' is the segmented mask, get the result and display it
+        const outputData = results.output.data; // Replace with actual output key
+        const segmentedImg = new ImageData(new Uint8ClampedArray(outputData), canvas.width, canvas.height);
+        
+        // Create a canvas to display the segmented result
+        const outputCanvas = document.createElement('canvas');
+        outputCanvas.width = canvas.width;
+        outputCanvas.height = canvas.height;
+        const outputContext = outputCanvas.getContext('2d');
+        outputContext.putImageData(segmentedImg, 0, 0);
+        
+        // Append the segmented image to the output section
+        const imgElement = document.createElement('img');
+        imgElement.src = outputCanvas.toDataURL('image/png');
+        document.getElementById('output').appendChild(imgElement);
+    }
+</script>
+
+</body>
+</html>

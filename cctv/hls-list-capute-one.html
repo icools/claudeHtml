@@ -19,7 +19,7 @@
             width: 100%;
             padding: 10px;
             font-size: 16px;
-            height: 100px;
+            height: 150px;
         }
         #captureButton {
             padding: 10px 20px;
@@ -34,13 +34,34 @@
             margin-top: 20px;
             display: flex;
             flex-wrap: wrap;
+            gap: 10px;
         }
-        #screenshotContainer img {
+        .screenshot-item {
             width: 300px;
             height: auto;
+            position: relative;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .screenshot-item img {
+            width: 100%;
+            height: auto;
             display: block;
-            margin: 10px;
             cursor: pointer;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            color: #333;
         }
     </style>
 </head>
@@ -62,14 +83,31 @@
             const urls = urlInput.value.trim()
                 .split('\n')
                 .map(url => url.trim())
-                .filter(url => url.startsWith('https://')); // 過濾掉不是 https 開頭的 URL
+                .filter(url => url.startsWith('https://') && url.includes('.m3u8')); // 過濾掉不是 https 和 .m3u8 的 URL
 
             if (urls.length === 0) {
-                alert('請輸入有效的 M3U8 URL（必須是 https 開頭）');
+                alert('請輸入有效的 M3U8 URL（必須是 https 開頭並且包含 .m3u8）');
                 return;
             }
 
+            // 清空之前的截圖
+            screenshotContainer.innerHTML = '';
+
             urls.forEach((url, index) => {
+                // 創建一個截圖項目容器
+                const screenshotItem = document.createElement('div');
+                screenshotItem.className = 'screenshot-item';
+
+                // 添加一個加載中覆蓋層
+                const loadingOverlay = document.createElement('div');
+                loadingOverlay.className = 'loading-overlay';
+                loadingOverlay.textContent = '正在擷取...';
+                screenshotItem.appendChild(loadingOverlay);
+
+                // 添加到容器中
+                screenshotContainer.appendChild(screenshotItem);
+
+                // 創建並隱藏視頻播放器
                 const videoPlayer = document.createElement('video');
                 videoPlayer.style.display = 'none';
                 document.body.appendChild(videoPlayer);
@@ -80,50 +118,79 @@
                     hls.attachMedia(videoPlayer);
 
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                        videoPlayer.play();
+                        videoPlayer.play().catch(error => {
+                            console.error('播放視頻失敗:', error);
+                            loadingOverlay.textContent = '無法播放視頻';
+                        });
                         setTimeout(() => {
-                            captureScreenshot(videoPlayer, url, hls);
-                        }, 2000); // 播放2秒後截圖
+                            captureScreenshot(videoPlayer, url, hls, screenshotItem, loadingOverlay);
+                        }, 1000); // 播放1秒後截圖
+                    });
+
+                    // 處理 HLS 播放錯誤
+                    hls.on(Hls.Events.ERROR, (event, data) => {
+                        console.error('HLS 播放錯誤:', data);
+                        loadingOverlay.textContent = '播放錯誤';
+                        hls.destroy();
+                        videoPlayer.remove();
                     });
                 } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
                     videoPlayer.src = url;
                     videoPlayer.addEventListener('loadedmetadata', () => {
-                        videoPlayer.play();
+                        videoPlayer.play().catch(error => {
+                            console.error('播放視頻失敗:', error);
+                            loadingOverlay.textContent = '無法播放視頻';
+                        });
                         setTimeout(() => {
-                            captureScreenshot(videoPlayer, url);
-                        }, 2000);
+                            captureScreenshot(videoPlayer, url, null, screenshotItem, loadingOverlay);
+                        }, 1000); // 播放1秒後截圖
                     });
+
+                    videoPlayer.addEventListener('error', () => {
+                        console.error('視頻加載錯誤');
+                        loadingOverlay.textContent = '加載錯誤';
+                        videoPlayer.remove();
+                    });
+                } else {
+                    loadingOverlay.textContent = '瀏覽器不支持 HLS';
                 }
             });
         });
 
-        function captureScreenshot(videoPlayer, url, hlsInstance) {
-            const canvas = document.createElement('canvas');
-            canvas.width = videoPlayer.videoWidth;
-            canvas.height = videoPlayer.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+        function captureScreenshot(videoPlayer, url, hlsInstance, screenshotItem, loadingOverlay) {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = videoPlayer.videoWidth;
+                canvas.height = videoPlayer.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
 
-            const screenshotUrl = canvas.toDataURL('image/png');
-            const img = document.createElement('img');
-            img.src = screenshotUrl;
-            img.alt = `Screenshot from ${url}`;
-            img.title = `點擊複製 URL: ${url}`;
+                const screenshotUrl = canvas.toDataURL('image/png');
+                const img = document.createElement('img');
+                img.src = screenshotUrl;
+                img.alt = `Screenshot from ${url}`;
+                img.title = `點擊複製 URL: ${url}`;
 
-            // 點擊圖片時複製對應的 URL
-            img.addEventListener('click', () => {
-                copyToClipboard(url);
-                alert('URL 已複製: ' + url);
-            });
+                // 點擊圖片時複製對應的 URL
+                img.addEventListener('click', () => {
+                    copyToClipboard(url);
+                    alert('URL 已複製: ' + url);
+                });
 
-            screenshotContainer.appendChild(img);
-
-            // 停止播放並釋放資源
-            videoPlayer.pause();
-            if (hlsInstance) {
-                hlsInstance.destroy();
+                // 清除覆蓋層並添加截圖
+                screenshotItem.removeChild(loadingOverlay);
+                screenshotItem.appendChild(img);
+            } catch (error) {
+                console.error('截圖失敗:', error);
+                loadingOverlay.textContent = '截圖失敗';
+            } finally {
+                // 停止播放並釋放資源
+                videoPlayer.pause();
+                if (hlsInstance) {
+                    hlsInstance.destroy();
+                }
+                videoPlayer.remove();
             }
-            videoPlayer.remove();
         }
 
         function copyToClipboard(text) {

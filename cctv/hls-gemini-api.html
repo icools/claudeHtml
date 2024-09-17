@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini API Video Segmentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        header input {
+            padding: 5px;
+            font-size: 16px;
+            width: 300px;
+            border: none;
+            border-radius: 3px;
+        }
+        #main-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        #video-section {
+            flex: 2;
+            min-width: 300px;
+        }
+        video {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            background-color: black;
+        }
+        #controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 200px;
+        }
+        #controls input {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #controls button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #2196F3;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        #controls button:hover {
+            background-color: #0b7dda;
+        }
+        #output-section {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        #description-list, #summary-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            flex: 1;
+            min-width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        #summary-section {
+            font-size: 18px;
+            min-height: 100px;
+        }
+        #description-list ul {
+            list-style-type: decimal;
+            padding-left: 20px;
+        }
+        #description-list li {
+            margin-bottom: 10px;
+        }
+        #summary-section h3 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Gemini API Video Segmentation</h1>
+    <input type="text" id="apiToken" placeholder="Enter Gemini API Token">
+</header>
+
+<div id="main-container">
+    <div id="video-section">
+        <video id="video" controls muted></video>
+    </div>
+    <div id="controls">
+        <input type="text" id="videoUrl" placeholder="Enter stream URL" value="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8">
+        <button onclick="playVideo()">Play</button>
+        <button onclick="captureAndSegment()">AI</button>
+        <button onclick="summarizeList()">SUM</button>
+    </div>
+</div>
+
+<div id="output-section">
+    <div id="description-list">
+        <h3>Descriptions</h3>
+        <ul id="descriptions"></ul>
+    </div>
+    <div id="summary-section">
+        <h3>Summary</h3>
+        <p id="summaryText">No summary yet.</p>
+    </div>
+</div>
+
+<canvas id="hiddenCanvas" style="display:none;"></canvas>
+
+<!-- 引入 HLS.js -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<script>
+    const videoElement = document.getElementById('video');
+    const descriptions = [];
+    const descriptionsList = document.getElementById('descriptions');
+    const summaryText = document.getElementById('summaryText');
+    const hiddenCanvas = document.getElementById('hiddenCanvas');
+    let apiToken = '';
+
+    // 更新 API Token
+    document.getElementById('apiToken').addEventListener('input', (e) => {
+        apiToken = e.target.value.trim();
+    });
+
+    // Function to load and play video from the given URL
+    function playVideo() {
+        const url = document.getElementById('videoUrl').value.trim();
+        if (!url) {
+            alert("請輸入有效的串流 URL。");
+            return;
+        }
+
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(url);
+            hls.attachMedia(videoElement);
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                videoElement.play();
+            });
+            hls.on(Hls.Events.ERROR, function(event, data) {
+                console.error("Hls.js error:", data);
+                alert("HLS 播放錯誤。請檢查串流 URL 或瀏覽器支援情況。");
+            });
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            videoElement.src = url;
+            videoElement.addEventListener('loadedmetadata', function() {
+                videoElement.play();
+            });
+        } else {
+            alert("此瀏覽器不支援 HLS 播放。");
+        }
+    }
+
+    // Function to capture the current frame and perform segmentation
+    async function captureAndSegment() {
+        if (!apiToken) {
+            alert("請輸入你的 Gemini API Token。");
+            return;
+        }
+
+        if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+            alert("影片尚未加載或寬高為 0。");
+            return;
+        }
+
+        // 設置 canvas 尺寸
+        hiddenCanvas.width = videoElement.videoWidth;
+        hiddenCanvas.height = videoElement.videoHeight;
+        const context = hiddenCanvas.getContext('2d');
+        
+        // 將當前影片幀繪製到 canvas 上
+        context.drawImage(videoElement, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
+        
+        // 獲取圖片數據為 Base64
+        const dataURL = hiddenCanvas.toDataURL('image/png');
+        const base64Image = dataURL.split(',')[1];
+        
+        // 準備 prompt
+        const prompt = "描述圖片中的物品，或者人物動作，或是表情";
+        
+        try {
+            // 呼叫 Gemini API
+            const response = await fetch('https://api.gemini.com/v1/describe', { // 替換為實際的 Gemini API 端點
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    image: base64Image
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API 錯誤: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            const description = data.description || "未提供描述。";
+
+            // 添加到列表
+            descriptions.push(description);
+            updateDescriptions();
+
+        } catch (error) {
+            console.error("錯誤:", error);
+            alert("呼叫 Gemini API 失敗。請檢查控制台以獲取詳細資訊。");
+        }
+    }
+
+    // 更新描述列表
+    function updateDescriptions() {
+        descriptionsList.innerHTML = '';
+        descriptions.forEach((desc, index) => {
+            const li = document.createElement('li');
+            li.textContent = desc;
+            descriptionsList.appendChild(li);
+        });
+    }
+
+    // 總結描述列表
+    async function summarizeList() {
+        if (!apiToken) {
+            alert("請輸入你的 Gemini API Token。");
+            return;
+        }
+
+        if (descriptions.length === 0) {
+            alert("沒有描述可以總結。");
+            return;
+        }
+
+        // 準備編號的描述列表
+        const listText = descriptions.map((desc, index) => `${index + 1}. ${desc}`).join(', ');
+        
+        // 準備總結 prompt
+        const summaryPrompt = `${listText}, 這是一連串影像的行為跟內容，請幫忙總結他目前正在做什麼，然後畫面有什麼行為或者動作，有可能預計要做什麼。`;
+
+        try {
+            // 呼叫 Gemini API 進行總結
+            const response = await fetch('https://api.gemini.com/v1/summarize', { // 替換為實際的 Gemini API 端點
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    prompt: summaryPrompt
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API 錯誤: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            const summary = data.summary || "未提供總結。";
+
+            // 顯示總結
+            summaryText.textContent = summary;
+
+        } catch (error) {
+            console.error("錯誤:", error);
+            alert("呼叫 Gemini API 進行總結失敗。請檢查控制台以獲取詳細資訊。");
+        }
+    }
+</script>
+
+</body>
+</html>
