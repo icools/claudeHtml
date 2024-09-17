@@ -232,9 +232,9 @@
 
             const uploadBinaryHeaders = {
                 'X-Goog-Upload-Command': 'upload, finalize',
+                'X-Goog-Upload-Offset': '0',
                 'Content-Length': numBytes,
-                'Content-Type': mimeType,
-                'X-Goog-Upload-Offset': 0
+                'Content-Type': mimeType
             };
             console.log('Uploading binary data to upload URL.');
 
@@ -295,8 +295,8 @@
             const generateContentData = await generateContentResponse.json();
             console.log('GenerateContent response data:', generateContentData);
 
-            const description = generateContentData.contents && generateContentData.contents[0].parts
-                ? generateContentData.contents[0].parts[0].text
+            const description = generateContentData.candidates && generateContentData.candidates[0].content.parts
+                ? generateContentData.candidates[0].content.parts[0].text
                 : "未提供描述。";
             descriptions.push(description);
             updateDescriptions();
@@ -321,7 +321,7 @@
         }
 
         const listText = descriptions.map((desc, index) => `${index + 1}. ${desc}`).join(', ');
-        const summaryPrompt = `${listText}, 這是一連串影像的行為跟內容，請幫忙總結他目前正在做什麼，然後畫面有什麼行為或者動作，有可能預計要做什麼。`;
+        const summaryPrompt = `${listText}, 這是一連串影像的行為跟內容描述,總結。`;
         console.log('Summarize prompt:', summaryPrompt);
 
         try {
@@ -360,8 +360,8 @@
             const generateContentData = await generateContentResponse.json();
             console.log('Summarize GenerateContent response data:', generateContentData);
 
-            const summary = generateContentData.contents && generateContentData.contents[0].parts
-                ? generateContentData.contents[0].parts[0].text
+            const summary = generateContentData.candidates && generateContentData.candidates[0].content.parts
+                ? generateContentData.candidates[0].content.parts[0].text
                 : "未提供總結。";
             summaryText.textContent = summary;
             console.log('Summary added:', summary);
