@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多串流擷取播放器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .input-container {
+            margin-bottom: 20px;
+        }
+        #urlInput {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            height: 100px;
+        }
+        #captureButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        #screenshotContainer {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        #screenshotContainer img {
+            width: 300px;
+            height: auto;
+            display: block;
+            margin: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>多串流擷取播放器</h1>
+    <div class="input-container">
+        <textarea id="urlInput" placeholder="輸入多個 M3U8 URL，每行一個"></textarea>
+        <button id="captureButton">擷取</button>
+    </div>
+
+    <div id="screenshotContainer"></div>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const captureButton = document.getElementById('captureButton');
+        const screenshotContainer = document.getElementById('screenshotContainer');
+
+        captureButton.addEventListener('click', () => {
+            const urls = urlInput.value.trim()
+                .split('\n')
+                .map(url => url.trim())
+                .filter(url => url.startsWith('https://')); // 過濾掉不是 https 開頭的 URL
+
+            if (urls.length === 0) {
+                alert('請輸入有效的 M3U8 URL（必須是 https 開頭）');
+                return;
+            }
+
+            urls.forEach((url, index) => {
+                const videoPlayer = document.createElement('video');
+                videoPlayer.style.display = 'none';
+                document.body.appendChild(videoPlayer);
+
+                if (Hls.isSupported()) {
+                    const hls = new Hls();
+                    hls.loadSource(url);
+                    hls.attachMedia(videoPlayer);
+
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        videoPlayer.play();
+                        setTimeout(() => {
+                            captureScreenshot(videoPlayer, url, hls);
+                        }, 2000); // 播放2秒後截圖
+                    });
+                } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoPlayer.src = url;
+                    videoPlayer.addEventListener('loadedmetadata', () => {
+                        videoPlayer.play();
+                        setTimeout(() => {
+                            captureScreenshot(videoPlayer, url);
+                        }, 2000);
+                    });
+                }
+            });
+        });
+
+        function captureScreenshot(videoPlayer, url, hlsInstance) {
+            const canvas = document.createElement('canvas');
+            canvas.width = videoPlayer.videoWidth;
+            canvas.height = videoPlayer.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+
+            const screenshotUrl = canvas.toDataURL('image/png');
+            const img = document.createElement('img');
+            img.src = screenshotUrl;
+            img.alt = `Screenshot from ${url}`;
+            img.title = `點擊複製 URL: ${url}`;
+
+            // 點擊圖片時複製對應的 URL
+            img.addEventListener('click', () => {
+                copyToClipboard(url);
+                alert('URL 已複製: ' + url);
+            });
+
+            screenshotContainer.appendChild(img);
+
+            // 停止播放並釋放資源
+            videoPlayer.pause();
+            if (hlsInstance) {
+                hlsInstance.destroy();
+            }
+            videoPlayer.remove();
+        }
+
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+    </script>
+</body>
+</html>
