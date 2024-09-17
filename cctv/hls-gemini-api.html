@@ -161,17 +161,23 @@
             hls.attachMedia(videoElement);
             hls.on(Hls.Events.MANIFEST_PARSED, function() {
                 videoElement.play();
+                console.log('HLS Manifest parsed and video playing.');
+            });
+            hls.on(Hls.Events.ERROR, function(event, data) {
+                console.log('Hls.js error:', data);
             });
         } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
             videoElement.src = url;
             videoElement.addEventListener('loadedmetadata', function() {
                 videoElement.play();
+                console.log('Video metadata loaded and video playing.');
             });
         }
     }
 
     async function captureAndSegment() {
         if (!apiToken || videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+            console.log('API Token not set or video not loaded.');
             return;
         }
 
@@ -180,20 +186,30 @@
             hiddenCanvas.height = videoElement.videoHeight;
             const context = hiddenCanvas.getContext('2d');
             context.drawImage(videoElement, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
+            console.log('Video frame captured.');
+
             const blob = await new Promise(resolve => hiddenCanvas.toBlob(resolve, 'image/jpeg'));
-            if (!blob) return;
+            if (!blob) {
+                console.log('Failed to convert video frame to Blob.');
+                return;
+            }
+            console.log('Video frame converted to Blob.');
+
             const arrayBuffer = await blob.arrayBuffer();
             const numBytes = arrayBuffer.byteLength;
             const mimeType = blob.type;
-            console.log('Captured frame:', numBytes, mimeType);
+            console.log(`Blob size: ${numBytes} bytes, MIME type: ${mimeType}`);
+
             const uploadUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiToken}`;
             const uploadHeaders = {
-                'X-Goog-Upload-Command': 'start, upload, finalize',
+                'X-Goog-Upload-Protocol': 'resumable',
+                'X-Goog-Upload-Command': 'start',
                 'X-Goog-Upload-Header-Content-Length': numBytes,
                 'X-Goog-Upload-Header-Content-Type': mimeType,
                 'Content-Type': 'application/json'
             };
             const uploadBody = JSON.stringify({ file: { display_name: 'captured_frame.jpeg' } });
+            console.log('Sending initial upload metadata request:', uploadBody);
 
             const uploadResponse = await fetch(uploadUrl, {
                 method: 'POST',
@@ -202,33 +218,45 @@
             });
 
             if (!uploadResponse.ok) {
-                console.log('Upload API Error:', uploadResponse.statusText);
+                console.log('Upload API Error:', uploadResponse.status, uploadResponse.statusText);
                 return;
             }
-            const uploadData = await uploadResponse.json();
-            const fileUri = uploadData.file.uri;
-            if (!fileUri) {
-                console.log('Upload API did not return file.uri');
+            console.log('Initial upload metadata response received.');
+
+            const uploadUrlHeader = uploadResponse.headers.get('x-goog-upload-url');
+            if (!uploadUrlHeader) {
+                console.log('Upload URL not found in response headers.');
                 return;
             }
+            console.log('Upload URL:', uploadUrlHeader);
 
             const uploadBinaryHeaders = {
                 'X-Goog-Upload-Command': 'upload, finalize',
-                'X-Goog-Upload-Header-Content-Length': numBytes,
-                'X-Goog-Upload-Header-Content-Type': mimeType,
-                'Content-Type': mimeType
+                'Content-Length': numBytes,
+                'Content-Type': mimeType,
+                'X-Goog-Upload-Offset': 0
             };
+            console.log('Uploading binary data to upload URL.');
 
-            const uploadBinaryResponse = await fetch(uploadUrl, {
+            const uploadBinaryResponse = await fetch(uploadUrlHeader, {
                 method: 'POST',
                 headers: uploadBinaryHeaders,
                 body: blob
             });
 
             if (!uploadBinaryResponse.ok) {
-                console.log('Upload Binary API Error:', uploadBinaryResponse.statusText);
+                console.log('Upload Binary API Error:', uploadBinaryResponse.status, uploadBinaryResponse.statusText);
                 return;
             }
+            console.log('Binary upload completed.');
+
+            const fileInfo = await uploadBinaryResponse.json();
+            const fileUri = fileInfo.file.uri;
+            if (!fileUri) {
+                console.log('File URI not found in binary upload response.');
+                return;
+            }
+            console.log('File URI:', fileUri);
 
             const generateContentUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-exp-0827:generateContent?key=${apiToken}`;
             const prompt = "描述圖片中的物品，或者人物動作，或是表情";
@@ -237,7 +265,7 @@
                     {
                         role: "user",
                         parts: [
-                            { fileData: { fileUri: fileUri, mimeType } },
+                            { file_data: { file_uri: fileUri, mime_type: mimeType } },
                             { text: prompt }
                         ]
                     }
@@ -250,6 +278,7 @@
                     responseMimeType: "text/plain"
                 }
             };
+            console.log('Sending generateContent request:', JSON.stringify(generateContentBody));
 
             const generateContentResponse = await fetch(generateContentUrl, {
                 method: 'POST',
@@ -258,16 +287,20 @@
             });
 
             if (!generateContentResponse.ok) {
-                console.log('GenerateContent API Error:', generateContentResponse.statusText);
+                console.log('GenerateContent API Error:', generateContentResponse.status, generateContentResponse.statusText);
                 return;
             }
+            console.log('GenerateContent response received.');
 
             const generateContentData = await generateContentResponse.json();
+            console.log('GenerateContent response data:', generateContentData);
+
             const description = generateContentData.contents && generateContentData.contents[0].parts
                 ? generateContentData.contents[0].parts[0].text
                 : "未提供描述。";
             descriptions.push(description);
             updateDescriptions();
+            console.log('Description added:', description);
         } catch (error) {
             console.log('Error:', error);
         }
@@ -289,6 +322,7 @@
 
         const listText = descriptions.map((desc, index) => `${index + 1}. ${desc}`).join(', ');
         const summaryPrompt = `${listText}, 這是一連串影像的行為跟內容，請幫忙總結他目前正在做什麼，然後畫面有什麼行為或者動作，有可能預計要做什麼。`;
+        console.log('Summarize prompt:', summaryPrompt);
 
         try {
             const generateContentUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-exp-0827:generateContent?key=${apiToken}`;
@@ -309,6 +343,7 @@
                     responseMimeType: "text/plain"
                 }
             };
+            console.log('Sending summarize generateContent request:', JSON.stringify(generateContentBody));
 
             const generateContentResponse = await fetch(generateContentUrl, {
                 method: 'POST',
@@ -317,15 +352,19 @@
             });
 
             if (!generateContentResponse.ok) {
-                console.log('GenerateContent API Error:', generateContentResponse.statusText);
+                console.log('GenerateContent API Error:', generateContentResponse.status, generateContentResponse.statusText);
                 return;
             }
+            console.log('Summarize GenerateContent response received.');
 
             const generateContentData = await generateContentResponse.json();
+            console.log('Summarize GenerateContent response data:', generateContentData);
+
             const summary = generateContentData.contents && generateContentData.contents[0].parts
                 ? generateContentData.contents[0].parts[0].text
                 : "未提供總結。";
             summaryText.textContent = summary;
+            console.log('Summary added:', summary);
         } catch (error) {
             console.log('Error:', error);
         }
