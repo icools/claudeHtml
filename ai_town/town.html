@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -6,16 +7,16 @@
   <style>
     body {
       margin: 0;
-      background-color: #87CEEB; /* 天空藍背景 */
       overflow: hidden;
+      background-color: #87CEEB;
+      font-family: monospace;
       position: relative;
     }
     canvas {
       display: block;
-      image-rendering: pixelated; /* 確保像素風格 */
-      background-color: #87CEEB; /* 天空藍背景 */
+      image-rendering: pixelated;
+      background-color: #87CEEB;
     }
-    /* 對話框樣式 */
     #dialogBox {
       position: absolute;
       bottom: 20px;
@@ -26,25 +27,32 @@
       padding: 10px 20px;
       border-radius: 5px;
       display: none;
-      font-family: Arial, sans-serif;
-      pointer-events: none;
       font-size: 14px;
+      pointer-events: none;
+    }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 5px;
+      border-radius: 5px;
     }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="1024" height="768"></canvas>
+  <div id="controls">
+    <label for="useGemini">Use Gemini for Conversations:</label>
+    <input type="checkbox" id="useGemini" checked>
+  </div>
+  <canvas id="canvas" width="1024" height="768"></canvas>
   <div id="dialogBox"></div>
-
   <script>
-    const canvas = document.getElementById('gameCanvas');
+    const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const dialogBox = document.getElementById('dialogBox');
-
-    // 定義每個像素塊的大小
+    const useGemini = document.getElementById('useGemini');
     const PIXEL_SIZE = 10;
-
-    // 定義顏色
     const COLORS = {
       grass: '#6DBD2A',
       road: '#8B4513',
@@ -59,108 +67,53 @@
       park: '#32CD32',
       churchRoof: '#A52A2A',
       churchTower: '#8B4513',
+      library: '#D3D3D3',
+      classroom: '#F5F5DC',
     };
-
-    // 定義建築類
     class Building {
       constructor(x, y, width, height, type) {
         this.x = x;
         this.y = y;
-        this.width = width; // 以像素塊數計算
-        this.height = height; // 以像素塊數計算
-        this.type = type; // 'house', 'church', 'park'
+        this.width = width;
+        this.height = height;
+        this.type = type;
       }
-
       draw() {
         for (let row = 0; row < this.height; row++) {
           for (let col = 0; col < this.width; col++) {
             let color = COLORS.building;
-            // 特殊處理教堂屋頂
             if (this.type === 'church' && row < this.height / 2) {
               color = COLORS.churchRoof;
             }
             ctx.fillStyle = color;
-            ctx.fillRect(
-              this.x + col * PIXEL_SIZE,
-              this.y + row * PIXEL_SIZE,
-              PIXEL_SIZE,
-              PIXEL_SIZE
-            );
+            ctx.fillRect(this.x + col * PIXEL_SIZE, this.y + row * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
             ctx.strokeStyle = '#000';
-            ctx.strokeRect(
-              this.x + col * PIXEL_SIZE,
-              this.y + row * PIXEL_SIZE,
-              PIXEL_SIZE,
-              PIXEL_SIZE
-            );
+            ctx.strokeRect(this.x + col * PIXEL_SIZE, this.y + row * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
           }
         }
-
-        // 添加門和窗戶
         if (this.type === 'house' || this.type === 'church') {
-          // 門
           ctx.fillStyle = COLORS.door;
-          ctx.fillRect(
-            this.x + Math.floor(this.width / 2) * PIXEL_SIZE - PIXEL_SIZE,
-            this.y + (this.height - 4) * PIXEL_SIZE,
-            PIXEL_SIZE * 2,
-            PIXEL_SIZE * 4
-          );
-          // 窗戶
+          ctx.fillRect(this.x + Math.floor(this.width / 2) * PIXEL_SIZE - PIXEL_SIZE, this.y + (this.height - 4) * PIXEL_SIZE, PIXEL_SIZE * 2, PIXEL_SIZE * 4);
           ctx.fillStyle = COLORS.window;
-          ctx.fillRect(
-            this.x + PIXEL_SIZE * 2,
-            this.y + PIXEL_SIZE * 3,
-            PIXEL_SIZE * 2,
-            PIXEL_SIZE * 2
-          );
-          ctx.fillRect(
-            this.x + this.width * PIXEL_SIZE - PIXEL_SIZE * 4,
-            this.y + PIXEL_SIZE * 3,
-            PIXEL_SIZE * 2,
-            PIXEL_SIZE * 2
-          );
+          ctx.fillRect(this.x + PIXEL_SIZE * 2, this.y + PIXEL_SIZE * 3, PIXEL_SIZE * 2, PIXEL_SIZE * 2);
+          ctx.fillRect(this.x + this.width * PIXEL_SIZE - PIXEL_SIZE * 4, this.y + PIXEL_SIZE * 3, PIXEL_SIZE * 2, PIXEL_SIZE * 2);
         }
-
-        // 教堂塔樓
         if (this.type === 'church') {
-          // 塔樓
           ctx.fillStyle = COLORS.churchTower;
-          ctx.fillRect(
-            this.x + Math.floor(this.width / 2) * PIXEL_SIZE - PIXEL_SIZE,
-            this.y - PIXEL_SIZE * 10,
-            PIXEL_SIZE * 2,
-            PIXEL_SIZE * 10
-          );
-          // 十字架
+          ctx.fillRect(this.x + Math.floor(this.width / 2) * PIXEL_SIZE - PIXEL_SIZE, this.y - PIXEL_SIZE * 10, PIXEL_SIZE * 2, PIXEL_SIZE * 10);
           ctx.strokeStyle = '#000';
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.moveTo(
-            this.x + Math.floor(this.width / 2) * PIXEL_SIZE,
-            this.y - PIXEL_SIZE * 10
-          );
-          ctx.lineTo(
-            this.x + Math.floor(this.width / 2) * PIXEL_SIZE,
-            this.y - PIXEL_SIZE * 15
-          );
+          ctx.moveTo(this.x + Math.floor(this.width / 2) * PIXEL_SIZE, this.y - PIXEL_SIZE * 10);
+          ctx.lineTo(this.x + Math.floor(this.width / 2) * PIXEL_SIZE, this.y - PIXEL_SIZE * 15);
           ctx.stroke();
-
           ctx.beginPath();
-          ctx.moveTo(
-            this.x + Math.floor(this.width / 2) * PIXEL_SIZE - PIXEL_SIZE,
-            this.y - PIXEL_SIZE * 12
-          );
-          ctx.lineTo(
-            this.x + Math.floor(this.width / 2) * PIXEL_SIZE + PIXEL_SIZE,
-            this.y - PIXEL_SIZE * 12
-          );
+          ctx.moveTo(this.x + Math.floor(this.width / 2) * PIXEL_SIZE - PIXEL_SIZE, this.y - PIXEL_SIZE * 12);
+          ctx.lineTo(this.x + Math.floor(this.width / 2) * PIXEL_SIZE + PIXEL_SIZE, this.y - PIXEL_SIZE * 12);
           ctx.stroke();
         }
       }
     }
-
-    // 定義房間類（室內）
     class Room {
       constructor(x, y, width, height, name) {
         this.x = x;
@@ -169,150 +122,101 @@
         this.height = height;
         this.name = name;
       }
-
       draw() {
-        ctx.fillStyle = '#F5F5DC';
-        ctx.fillRect(
-          this.x,
-          this.y,
-          this.width * PIXEL_SIZE,
-          this.height * PIXEL_SIZE
-        );
+        ctx.fillStyle = COLORS.classroom;
+        ctx.fillRect(this.x, this.y, this.width * PIXEL_SIZE, this.height * PIXEL_SIZE);
         ctx.strokeStyle = '#000';
-        ctx.strokeRect(
-          this.x,
-          this.y,
-          this.width * PIXEL_SIZE,
-          this.height * PIXEL_SIZE
-        );
-
-        // 房間名稱
+        ctx.strokeRect(this.x, this.y, this.width * PIXEL_SIZE, this.height * PIXEL_SIZE);
         ctx.fillStyle = '#000';
         ctx.font = '12px Arial';
-        ctx.fillText(
-          this.name,
-          this.x + PIXEL_SIZE,
-          this.y + PIXEL_SIZE * 2
-        );
+        ctx.fillText(this.name, this.x + PIXEL_SIZE, this.y + PIXEL_SIZE * 2);
       }
     }
-
-    // 定義角色類
     class Character {
       constructor(name, gender, age, x, y, role) {
         this.name = name;
-        this.gender = gender; // 'male', 'female'
+        this.gender = gender;
         this.age = age;
         this.x = x;
         this.y = y;
         this.size = PIXEL_SIZE * 3;
-        this.speed = 1 + Math.random(); // 隨機速度
+        this.speed = 1 + Math.random();
         this.target = this.getRandomTarget();
         this.memory = [];
-        this.color = this.gender === 'male' ? COLORS.npcMaleYoung : COLORS.npcFemaleYoung;
+        this.color = this.getColor();
       }
-
+      getColor() {
+        if (this.gender === 'male' && this.age < 40) return COLORS.npcMaleYoung;
+        if (this.gender === 'female' && this.age < 40) return COLORS.npcFemaleYoung;
+        if (this.gender === 'male' && this.age >= 40) return COLORS.npcMaleOld;
+        return COLORS.npcFemaleOld;
+      }
       getRandomTarget() {
         return {
-          x: Math.random() * (canvas.width - this.size),
-          y: Math.random() * (canvas.height - this.size),
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
         };
       }
-
       draw() {
-        // 身體
         ctx.fillStyle = this.color;
-        ctx.fillRect(
-          this.x,
-          this.y,
-          this.size,
-          this.size
-        );
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size / 2, 0, 2 * Math.PI);
+        ctx.fill();
         ctx.strokeStyle = '#000';
-        ctx.strokeRect(
-          this.x,
-          this.y,
-          this.size,
-          this.size
-        );
-
-        // 顯示名字和年齡
+        ctx.stroke();
         ctx.fillStyle = '#000';
         ctx.font = '12px Arial';
-        ctx.fillText(
-          `${this.name} (${this.age})`,
-          this.x - PIXEL_SIZE,
-          this.y - PIXEL_SIZE
-        );
+        ctx.fillText(`${this.name} (${this.age})`, this.x - PIXEL_SIZE, this.y - PIXEL_SIZE);
       }
-
-      update() {
+      update(agents) {
         const dx = this.target.x - this.x;
         const dy = this.target.y - this.y;
         const distance = Math.hypot(dx, dy);
-
         if (distance > 5) {
           this.x += (dx / distance) * this.speed;
           this.y += (dy / distance) * this.speed;
         } else {
           this.target = this.getRandomTarget();
         }
+        this.checkInteraction(agents);
       }
-
       interact(other) {
         const interaction = `${this.name} 和 ${other.name} 進行了交談。`;
         this.memory.push(interaction);
         other.memory.push(interaction);
         showDialog(interaction);
-        console.log(interaction);
+      }
+      checkInteraction(agents) {
+        agents.forEach(agent => {
+          if (agent !== this) {
+            const distance = Math.hypot(this.x - agent.x, this.y - agent.y);
+            if (distance < PIXEL_SIZE * 3) {
+              this.interact(agent);
+            }
+          }
+        });
+      }
+      async talk(message) {
+        if (useGemini.checked) {
+          try {
+            const response = await fetch('/api/gemini', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message, name: this.name }),
+            });
+            const data = await response.json();
+            this.memory.push(`${this.name}: ${message}`);
+            this.memory.push(`${this.name}: ${data.response}`);
+            return data.response;
+          } catch {
+            return "I'm having trouble communicating right now.";
+          }
+        } else {
+          this.memory.push(`${this.name}: ${message}`);
+          return `(Not using Gemini) ${this.name} said: ${message}`;
+        }
       }
     }
-
-    // 創建建築實例
-    const buildings = [
-      new Building(50, 400, 20, 20, 'house'),
-      new Building(300, 400, 20, 20, 'house'),
-      new Building(550, 300, 25, 25, 'church'),
-      new Building(800, 450, 15, 10, 'park'),
-    ];
-
-    // 創建房間實例
-    const rooms = [
-      new Room(600, 350, 10, 5, '教室'),
-      new Room(650, 350, 10, 5, '圖書館'),
-    ];
-
-    // 創建角色實例
-    const characters = [
-      new Character('小明', 'male', 25, 60, 410, '農夫'),
-      new Character('小紅', 'female', 22, 310, 410, '教師'),
-      new Character('老張', 'male', 60, 560, 310, '退休'),
-      new Character('小美', 'female', 18, 810, 460, '麵包師傅'),
-    ];
-
-    // 繪製草地
-    function drawGrass() {
-      ctx.fillStyle = COLORS.grass;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    // 繪製道路
-    function drawRoad() {
-      ctx.fillStyle = COLORS.road;
-      ctx.fillRect(0, canvas.height - PIXEL_SIZE * 12, canvas.width, PIXEL_SIZE * 2);
-    }
-
-    // 繪製建築物
-    function drawBuildings() {
-      buildings.forEach(building => building.draw());
-    }
-
-    // 繪製房間（室內）
-    function drawRooms() {
-      rooms.forEach(room => room.draw());
-    }
-
-    // 顯示對話框
     function showDialog(text) {
       dialogBox.textContent = text;
       dialogBox.style.display = 'block';
@@ -320,47 +224,64 @@
         dialogBox.style.display = 'none';
       }, 3000);
     }
-
-    // 遊戲主循環
+    const buildings = [
+      new Building(50, 400, 20, 20, 'house'),
+      new Building(300, 400, 20, 20, 'house'),
+      new Building(550, 300, 25, 25, 'church'),
+      new Building(800, 450, 15, 10, 'park'),
+    ];
+    const rooms = [
+      new Room(600, 350, 10, 5, '教室'),
+      new Room(650, 350, 10, 5, '圖書館'),
+    ];
+    const characters = [
+      new Character('小明', 'male', 25, 60, 410, '農夫'),
+      new Character('小紅', 'female', 22, 310, 410, '教師'),
+      new Character('老張', 'male', 60, 560, 310, '退休'),
+      new Character('小美', 'female', 18, 810, 460, '麵包師傅'),
+      new Character('阿偉', 'male', 35, 200, 150, '工程師'),
+      new Character('阿麗', 'female', 28, 400, 500, '設計師'),
+    ];
+    function drawGrass() {
+      ctx.fillStyle = COLORS.grass;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    function drawRoad() {
+      ctx.fillStyle = COLORS.road;
+      ctx.fillRect(0, canvas.height - PIXEL_SIZE * 12, canvas.width, PIXEL_SIZE * 2);
+    }
+    function drawBuildings() {
+      buildings.forEach(building => building.draw());
+    }
+    function drawRooms() {
+      rooms.forEach(room => room.draw());
+    }
     function gameLoop() {
-      // 清除畫布
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // 繪製草地和道路
       drawGrass();
       drawRoad();
-
-      // 繪製建築
       drawBuildings();
-
-      // 繪製房間
       drawRooms();
-
-      // 更新並繪製角色
       characters.forEach(character => {
-        character.update();
+        character.update(characters);
         character.draw();
       });
-
-      // 角色交互
-      for (let i = 0; i < characters.length; i++) {
-        for (let j = i + 1; j < characters.length; j++) {
-          const charA = characters[i];
-          const charB = characters[j];
-          const distance = Math.hypot(charA.x - charB.x, charA.y - charB.y);
-          if (distance < PIXEL_SIZE * 3) {
-            charA.interact(charB);
-          }
-        }
-      }
-
       requestAnimationFrame(gameLoop);
     }
-
-    // 開始遊戲
     gameLoop();
-
-    // 窗口調整時重新設置畫布大小
+    canvas.addEventListener('click', async (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const clickedAgent = characters.find(agent => Math.hypot(agent.x - x, agent.y - y) <= PIXEL_SIZE * 1.5);
+      if (clickedAgent) {
+        const message = prompt(`Talk to ${clickedAgent.name}:`);
+        if (message) {
+          const response = await clickedAgent.talk(message);
+          alert(`${clickedAgent.name}: ${response}`);
+        }
+      }
+    });
     window.addEventListener('resize', () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;

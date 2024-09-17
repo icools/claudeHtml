@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Town</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #f0f0f0;
+      font-family: monospace;
+    }
+    #canvas {
+      background-color: #ffffff;
+    }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+    }
+    .agent-info {
+      position: absolute;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 5px;
+      border-radius: 5px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label for="useGemini">Use Gemini for Conversations:</label>
+    <input type="checkbox" id="useGemini" checked>
+  </div>
+  <canvas id="canvas" width="800" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const useGeminiCheckbox = document.getElementById('useGemini');
+    
+    const LOCATIONS = {
+      PARK: { x: 100, y: 100, radius: 50 },
+      CAFE: { x: 300, y: 200, radius: 30 },
+      LIBRARY: { x: 500, y: 400, radius: 40 },
+    };
+
+    const Agent = class {
+      constructor(name, x, y, color) {
+        this.name = name;
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.targetX = this.x;
+        this.targetY = this.y;
+        this.speed = 2;
+        this.isMoving = false;
+        this.conversationTarget = null;
+        this.memories = [];
+        this.personality = `This is ${this.name}, a complex and nuanced individual.`;
+        this.generatePlan();
+        this.infoElement = this.createInfoElement();
+      }
+
+      createInfoElement() {
+        const infoElement = document.createElement('div');
+        infoElement.classList.add('agent-info');
+        infoElement.textContent = this.name;
+        document.body.appendChild(infoElement);
+        return infoElement;
+      }
+
+      generatePlan() {
+        const actions = ['wander', 'goToLocation', 'chat'];
+        this.plan = Array.from({ length: 5 }, () => ({
+          action: actions[Math.floor(Math.random() * actions.length)],
+          duration: Math.floor(Math.random() * 60) + 30,
+          targetLocation: Object.keys(LOCATIONS)[Math.floor(Math.random() * Object.keys(LOCATIONS).length)],
+        }));
+        this.currentPlanIndex = 0;
+        this.currentPlanTime = 0;
+      }
+
+      update(agents) {
+        this.currentPlanTime++;
+        if (this.currentPlanTime >= this.plan[this.currentPlanIndex].duration) {
+          this.currentPlanIndex = (this.currentPlanIndex + 1) % this.plan.length;
+          this.currentPlanTime = 0;
+        }
+
+        const { action, targetLocation } = this.plan[this.currentPlanIndex];
+        switch (action) {
+          case 'wander':
+            this.wander();
+            break;
+          case 'goToLocation':
+            this.goToLocation(targetLocation);
+            break;
+          case 'chat':
+            this.findConversationTarget(agents);
+            if (this.conversationTarget) {
+              this.moveToTarget(this.conversationTarget.x, this.conversationTarget.y);
+            } else {
+              this.wander();
+            }
+            break;
+        }
+
+        if (this.isMoving) {
+          this.moveToTarget(this.targetX, this.targetY);
+        }
+
+        this.updateInfoElement();
+      }
+
+      wander() {
+        if (!this.isMoving) {
+          this.targetX = Math.random() * canvas.width;
+          this.targetY = Math.random() * canvas.height;
+          this.isMoving = true;
+        }
+      }
+
+      goToLocation(locationName) {
+        const location = LOCATIONS[locationName];
+        if (location) {
+          this.moveToTarget(location.x, location.y);
+          this.memories.push(`Went to the ${locationName.toLowerCase()}.`);
+        }
+      }
+
+      findConversationTarget(agents) {
+        if (!this.conversationTarget) {
+          const otherAgents = agents.filter(agent => agent !== this && this.isNear(agent));
+          if (otherAgents.length > 0) {
+            const randomAgent = otherAgents[Math.floor(Math.random() * otherAgents.length)];
+            this.conversationTarget = randomAgent;
+            this.memories.push(`Started a conversation with ${randomAgent.name} at the ${this.getCurrentLocationName().toLowerCase()}.`);
+          }
+        }
+      }
+
+      isNear(agent) {
+        const distance = Math.hypot(this.x - agent.x, this.y - agent.y);
+        return distance <= 30;
+      }
+
+      moveToTarget(targetX, targetY) {
+        const dx = targetX - this.x;
+        const dy = targetY - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > this.speed) {
+          this.x += (dx / distance) * this.speed;
+          this.y += (dy / distance) * this.speed;
+        } else {
+          this.x = targetX;
+          this.y = targetY;
+          this.isMoving = false;
+          this.conversationTarget = null;
+        }
+      }
+
+      draw() {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 10, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      async talk(message) {
+        const useGemini = useGeminiCheckbox.checked;
+        if (useGemini) {
+          try {
+            const response = await fetch('/api/gemini', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                message,
+                personality: this.personality,
+                memories: this.memories.slice(-5).join('\n'),
+              }),
+            });
+            const data = await response.json();
+            this.memories.push(`${this.name}: ${message}`);
+            this.memories.push(`${this.conversationTarget.name}: ${data.response}`);
+            return data.response;
+          } catch (error) {
+            console.error('Error communicating with Gemini API:', error);
+            return "I'm having trouble communicating right now.";
+          }
+        } else {
+          this.memories.push(`${this.name}: ${message}`);
+          const response = `(Not using Gemini) ${this.name} said: ${message}`;
+          this.memories.push(`${this.conversationTarget.name}: ${response}`);
+          return response;
+        }
+      }
+
+      getCurrentLocationName() {
+        for (const [locationName, location] of Object.entries(LOCATIONS)) {
+          const distance = Math.hypot(this.x - location.x, this.y - location.y);
+          if (distance <= location.radius) {
+            return locationName;
+          }
+        }
+        return 'Town';
+      }
+
+      updateInfoElement() {
+        this.infoElement.style.left = `${this.x + 15}px`;
+        this.infoElement.style.top = `${this.y - 25}px`;
+        this.infoElement.textContent = `${this.name} - ${this.getCurrentLocationName()}`;
+        this.infoElement.style.display = 'block';
+      }
+    };
+
+    const agents = [
+      new Agent('Alice', 100, 100, 'red'),
+      new Agent('Bob', 200, 200, 'blue'),
+      new Agent('Charlie', 300, 300, 'green'),
+    ];
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      agents.forEach(agent => agent.update(agents));
+      agents.forEach(agent => agent.draw());
+
+      for (const locationName of Object.keys(LOCATIONS)) {
+        const location = LOCATIONS[locationName];
+        ctx.strokeStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(location.x, location.y, location.radius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.fillStyle = 'black';
+        ctx.fillText(locationName, location.x - 15, location.y + 5);
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+
+    canvas.addEventListener('click', async (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const clickedAgent = agents.find(agent => Math.hypot(agent.x - x, agent.y - y) <= 10);
+      if (clickedAgent) {
+        const message = prompt(`Talk to ${clickedAgent.name}:`);
+        if (message) {
+          const response = await clickedAgent.talk(message);
+          alert(`${clickedAgent.name}: ${response}`);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
