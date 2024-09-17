@@ -21,17 +21,21 @@
             padding: 10px;
             font-size: 16px;
         }
-        #playButton {
+        #playButton, #screenshotButton {
             padding: 10px 20px;
             font-size: 16px;
             background-color: #4CAF50;
             color: white;
             border: none;
             cursor: pointer;
+            margin-left: 10px;
         }
         #videoPlayer {
             width: 100%;
             max-width: 800px;
+        }
+        #screenshotContainer {
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -40,17 +44,29 @@
     <div class="input-container">
         <input type="text" id="urlInput" placeholder="輸入 M3U8 URL">
         <button id="playButton">播放</button>
+        <button id="screenshotButton">截圖</button>
     </div>
     <video id="videoPlayer" controls></video>
+
+    <div id="screenshotContainer"></div>
 
     <script>
         const urlInput = document.getElementById('urlInput');
         const playButton = document.getElementById('playButton');
         const videoPlayer = document.getElementById('videoPlayer');
+        const screenshotButton = document.getElementById('screenshotButton');
+        const screenshotContainer = document.getElementById('screenshotContainer');
+
+        // 儲存並加載 URL
+        const storedUrl = localStorage.getItem('lastUrl');
+        if (storedUrl) {
+            urlInput.value = storedUrl;  // 自動填入上次使用的 URL
+        }
 
         playButton.addEventListener('click', () => {
             const videoSrc = urlInput.value.trim();
             if (videoSrc) {
+                localStorage.setItem('lastUrl', videoSrc);  // 儲存 URL 到 localStorage
                 if (Hls.isSupported()) {
                     const hls = new Hls();
                     hls.loadSource(videoSrc);
@@ -73,6 +89,24 @@
             else {
                 alert('請輸入有效的 M3U8 URL');
             }
+        });
+
+        // 截圖功能
+        screenshotButton.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = videoPlayer.videoWidth;
+            canvas.height = videoPlayer.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+
+            // 下載截圖
+            const screenshotUrl = canvas.toDataURL('image/png');
+            const downloadLink = document.createElement('a');
+            downloadLink.href = screenshotUrl;
+            downloadLink.download = 'screenshot.png';
+            downloadLink.textContent = '點此下載截圖';
+            screenshotContainer.innerHTML = '';  // 清空上次的截圖
+            screenshotContainer.appendChild(downloadLink);
         });
     </script>
 </body>
