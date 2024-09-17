@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLS 串流播放器與差異化偵測</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .input-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        #urlInput {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #playButton, #screenshotButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        #videoPlayer {
+            width: 100%;
+            max-width: 800px;
+        }
+        #screenshotContainer {
+            margin-top: 20px;
+        }
+        #screenshotContainer img {
+            width: 300px;
+            height: auto;
+            display: block;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>HLS 串流播放器與差異化偵測</h1>
+    <div class="input-container">
+        <input type="text" id="urlInput" placeholder="輸入 M3U8 URL">
+        <button id="playButton">播放</button>
+        <button id="screenshotButton">截圖</button>
+    </div>
+    <video id="videoPlayer" controls></video>
+
+    <div id="screenshotContainer"></div>
+
+    <script>
+        let previousImageData = null;  // 用於儲存前一張圖片的像素數據
+
+        const urlInput = document.getElementById('urlInput');
+        const playButton = document.getElementById('playButton');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const screenshotButton = document.getElementById('screenshotButton');
+        const screenshotContainer = document.getElementById('screenshotContainer');
+
+        // 儲存並加載 URL
+        const storedUrl = localStorage.getItem('lastUrl');
+        if (storedUrl) {
+            urlInput.value = storedUrl;  // 自動填入上次使用的 URL
+        }
+
+        playButton.addEventListener('click', () => {
+            const videoSrc = urlInput.value.trim();
+            if (videoSrc) {
+                localStorage.setItem('lastUrl', videoSrc);  // 儲存 URL 到 localStorage
+                if (Hls.isSupported()) {
+                    const hls = new Hls();
+                    hls.loadSource(videoSrc);
+                    hls.attachMedia(videoPlayer);
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        videoPlayer.play();
+                    });
+                }
+                else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoPlayer.src = videoSrc;
+                    videoPlayer.addEventListener('loadedmetadata', () => {
+                        videoPlayer.play();
+                    });
+                }
+                else {
+                    console.error('This browser does not support HLS');
+                    alert('您的瀏覽器不支持 HLS 播放');
+                }
+            }
+            else {
+                alert('請輸入有效的 M3U8 URL');
+            }
+        });
+
+        // 截圖功能
+        screenshotButton.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = videoPlayer.videoWidth;
+            canvas.height = videoPlayer.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+
+            // 取得當前截圖的 ImageData
+            const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            if (!previousImageData) {
+                // 如果沒有前一張圖片，直接顯示原圖
+                displayImage(canvas.toDataURL('image/png'), '原圖');
+                previousImageData = currentImageData;  // 將當前圖片儲存為前一張圖片
+            } else {
+                // 進行差異化相減
+                const diffCanvas = document.createElement('canvas');
+                diffCanvas.width = canvas.width;
+                diffCanvas.height = canvas.height;
+                const diffCtx = diffCanvas.getContext('2d');
+                const diffImageData = diffCtx.createImageData(canvas.width, canvas.height);
+
+                for (let i = 0; i < currentImageData.data.length; i += 4) {
+                    // 計算差異
+                    diffImageData.data[i] = Math.abs(currentImageData.data[i] - previousImageData.data[i]); // R
+                    diffImageData.data[i + 1] = Math.abs(currentImageData.data[i + 1] - previousImageData.data[i + 1]); // G
+                    diffImageData.data[i + 2] = Math.abs(currentImageData.data[i + 2] - previousImageData.data[i + 2]); // B
+                    diffImageData.data[i + 3] = 255; // 透明度設為不透明
+                }
+
+                // 將差異圖像繪製到 diffCanvas 上
+                diffCtx.putImageData(diffImageData, 0, 0);
+
+                // 顯示差異圖像
+                displayImage(diffCanvas.toDataURL('image/png'), '差異圖');
+
+                // 更新前一張圖片為當前圖片
+                previousImageData = currentImageData;
+            }
+        });
+
+        // 顯示圖片的函數
+        function displayImage(imageSrc, label) {
+            const img = document.createElement('img');
+            img.src = imageSrc;
+            img.title = `點擊下載${label}`;
+            img.alt = label;
+
+            img.addEventListener('click', () => {
+                const downloadLink = document.createElement('a');
+                downloadLink.href = imageSrc;
+                downloadLink.download = `${label}.png`;
+                downloadLink.click();
+            });
+
+            screenshotContainer.appendChild(img);
+        }
+    </script>
+</body>
+</html>

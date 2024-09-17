@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLS 串流播放器與膚色偵測</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .input-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        #urlInput {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+        }
+        #playButton, #screenshotButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        #videoPlayer {
+            width: 100%;
+            max-width: 800px;
+        }
+        #screenshotContainer {
+            margin-top: 20px;
+        }
+        #screenshotContainer img {
+            width: 300px;
+            height: auto;
+            display: block;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>HLS 串流播放器與膚色偵測</h1>
+    <div class="input-container">
+        <input type="text" id="urlInput" placeholder="輸入 M3U8 URL">
+        <button id="playButton">播放</button>
+        <button id="screenshotButton">截圖</button>
+    </div>
+    <video id="videoPlayer" controls></video>
+
+    <div id="screenshotContainer"></div>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const playButton = document.getElementById('playButton');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const screenshotButton = document.getElementById('screenshotButton');
+        const screenshotContainer = document.getElementById('screenshotContainer');
+
+        // 儲存並加載 URL
+        const storedUrl = localStorage.getItem('lastUrl');
+        if (storedUrl) {
+            urlInput.value = storedUrl;  // 自動填入上次使用的 URL
+        }
+
+        playButton.addEventListener('click', () => {
+            const videoSrc = urlInput.value.trim();
+            if (videoSrc) {
+                localStorage.setItem('lastUrl', videoSrc);  // 儲存 URL 到 localStorage
+                if (Hls.isSupported()) {
+                    const hls = new Hls();
+                    hls.loadSource(videoSrc);
+                    hls.attachMedia(videoPlayer);
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        videoPlayer.play();
+                    });
+                }
+                else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoPlayer.src = videoSrc;
+                    videoPlayer.addEventListener('loadedmetadata', () => {
+                        videoPlayer.play();
+                    });
+                }
+                else {
+                    console.error('This browser does not support HLS');
+                    alert('您的瀏覽器不支持 HLS 播放');
+                }
+            }
+            else {
+                alert('請輸入有效的 M3U8 URL');
+            }
+        });
+
+        // 截圖和處理功能
+        screenshotButton.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = videoPlayer.videoWidth;
+            canvas.height = videoPlayer.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+
+            // 生成原圖截圖並顯示
+            const screenshotUrl = canvas.toDataURL('image/png');
+            const originalImg = document.createElement('img');
+            originalImg.src = screenshotUrl;
+            originalImg.title = '點擊下載原圖';
+            originalImg.addEventListener('click', () => {
+                const downloadLink = document.createElement('a');
+                downloadLink.href = screenshotUrl;
+                downloadLink.download = 'screenshot.png';
+                downloadLink.click();  // 模擬點擊下載
+            });
+            screenshotContainer.appendChild(originalImg);
+
+            // 膚色偵測並處理圖片
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            // 進行膚色偵測
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+
+                // 如果符合膚色範圍，保持原樣；否則將像素轉為灰色
+                if (!isSkinColor(r, g, b)) {
+                    const avg = (r + g + b) / 3;
+                    data[i] = avg;
+                    data[i + 1] = avg;
+                    data[i + 2] = avg;
+                }
+            }
+
+            // 更新處理後的圖片並顯示
+            ctx.putImageData(imageData, 0, 0);
+            const processedUrl = canvas.toDataURL('image/png');
+            const processedImg = document.createElement('img');
+            processedImg.src = processedUrl;
+            processedImg.title = '點擊下載處理後的圖片';
+            processedImg.addEventListener('click', () => {
+                const downloadLink = document.createElement('a');
+                downloadLink.href = processedUrl;
+                downloadLink.download = 'processed_screenshot.png';
+                downloadLink.click();  // 模擬點擊下載
+            });
+
+            // 添加處理後的圖片
+            screenshotContainer.appendChild(processedImg);
+        });
+
+        // 簡單的膚色範圍檢測 (基於 RGB 值)
+        function isSkinColor(r, g, b) {
+            const r_g_ratio = r / g;
+            const r_b_ratio = r / b;
+
+            return (
+                r > 95 && g > 40 && b > 20 &&
+                r_g_ratio > 1.15 && 
+                r_g_ratio < 1.5 && 
+                r_b_ratio > 1.2
+            );
+        }
+    </script>
+</body>
+</html>
