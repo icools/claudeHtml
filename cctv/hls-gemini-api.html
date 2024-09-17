@@ -98,6 +98,9 @@
         #summary-section h3 {
             margin-top: 0;
         }
+        #summary-section p {
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -132,7 +135,6 @@
 
 <canvas id="hiddenCanvas" style="display:none;"></canvas>
 
-<!-- 引入 HLS.js -->
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <script>
@@ -143,16 +145,13 @@
     const hiddenCanvas = document.getElementById('hiddenCanvas');
     let apiToken = '';
 
-    // 更新 API Token
     document.getElementById('apiToken').addEventListener('input', (e) => {
         apiToken = e.target.value.trim();
     });
 
-    // Function to load and play video from the given URL
     function playVideo() {
         const url = document.getElementById('videoUrl').value.trim();
         if (!url) {
-            alert("請輸入有效的串流 URL。");
             return;
         }
 
@@ -163,132 +162,172 @@
             hls.on(Hls.Events.MANIFEST_PARSED, function() {
                 videoElement.play();
             });
-            hls.on(Hls.Events.ERROR, function(event, data) {
-                console.error("Hls.js error:", data);
-                alert("HLS 播放錯誤。請檢查串流 URL 或瀏覽器支援情況。");
-            });
         } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
             videoElement.src = url;
             videoElement.addEventListener('loadedmetadata', function() {
                 videoElement.play();
             });
-        } else {
-            alert("此瀏覽器不支援 HLS 播放。");
         }
     }
 
-    // Function to capture the current frame and perform segmentation
     async function captureAndSegment() {
-        if (!apiToken) {
-            alert("請輸入你的 Gemini API Token。");
+        if (!apiToken || videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
             return;
         }
 
-        if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
-            alert("影片尚未加載或寬高為 0。");
-            return;
-        }
-
-        // 設置 canvas 尺寸
-        hiddenCanvas.width = videoElement.videoWidth;
-        hiddenCanvas.height = videoElement.videoHeight;
-        const context = hiddenCanvas.getContext('2d');
-        
-        // 將當前影片幀繪製到 canvas 上
-        context.drawImage(videoElement, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
-        
-        // 獲取圖片數據為 Base64
-        const dataURL = hiddenCanvas.toDataURL('image/png');
-        const base64Image = dataURL.split(',')[1];
-        
-        // 準備 prompt
-        const prompt = "描述圖片中的物品，或者人物動作，或是表情";
-        
         try {
-            // 呼叫 Gemini API
-            const response = await fetch('https://api.gemini.com/v1/describe', { // 替換為實際的 Gemini API 端點
+            hiddenCanvas.width = videoElement.videoWidth;
+            hiddenCanvas.height = videoElement.videoHeight;
+            const context = hiddenCanvas.getContext('2d');
+            context.drawImage(videoElement, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
+            const blob = await new Promise(resolve => hiddenCanvas.toBlob(resolve, 'image/jpeg'));
+            if (!blob) return;
+            const arrayBuffer = await blob.arrayBuffer();
+            const numBytes = arrayBuffer.byteLength;
+            const mimeType = blob.type;
+            console.log('Captured frame:', numBytes, mimeType);
+            const uploadUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiToken}`;
+            const uploadHeaders = {
+                'X-Goog-Upload-Command': 'start, upload, finalize',
+                'X-Goog-Upload-Header-Content-Length': numBytes,
+                'X-Goog-Upload-Header-Content-Type': mimeType,
+                'Content-Type': 'application/json'
+            };
+            const uploadBody = JSON.stringify({ file: { display_name: 'captured_frame.jpeg' } });
+
+            const uploadResponse = await fetch(uploadUrl, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    prompt: prompt,
-                    image: base64Image
-                })
+                headers: uploadHeaders,
+                body: uploadBody
             });
 
-            if (!response.ok) {
-                throw new Error(`API 錯誤: ${response.statusText}`);
+            if (!uploadResponse.ok) {
+                console.log('Upload API Error:', uploadResponse.statusText);
+                return;
+            }
+            const uploadData = await uploadResponse.json();
+            const fileUri = uploadData.file.uri;
+            if (!fileUri) {
+                console.log('Upload API did not return file.uri');
+                return;
             }
 
-            const data = await response.json();
-            const description = data.description || "未提供描述。";
+            const uploadBinaryHeaders = {
+                'X-Goog-Upload-Command': 'upload, finalize',
+                'X-Goog-Upload-Header-Content-Length': numBytes,
+                'X-Goog-Upload-Header-Content-Type': mimeType,
+                'Content-Type': mimeType
+            };
 
-            // 添加到列表
+            const uploadBinaryResponse = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: uploadBinaryHeaders,
+                body: blob
+            });
+
+            if (!uploadBinaryResponse.ok) {
+                console.log('Upload Binary API Error:', uploadBinaryResponse.statusText);
+                return;
+            }
+
+            const generateContentUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-exp-0827:generateContent?key=${apiToken}`;
+            const prompt = "描述圖片中的物品，或者人物動作，或是表情";
+            const generateContentBody = {
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { fileData: { fileUri: fileUri, mimeType } },
+                            { text: prompt }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 1,
+                    topK: 64,
+                    topP: 0.95,
+                    maxOutputTokens: 8192,
+                    responseMimeType: "text/plain"
+                }
+            };
+
+            const generateContentResponse = await fetch(generateContentUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(generateContentBody)
+            });
+
+            if (!generateContentResponse.ok) {
+                console.log('GenerateContent API Error:', generateContentResponse.statusText);
+                return;
+            }
+
+            const generateContentData = await generateContentResponse.json();
+            const description = generateContentData.contents && generateContentData.contents[0].parts
+                ? generateContentData.contents[0].parts[0].text
+                : "未提供描述。";
             descriptions.push(description);
             updateDescriptions();
-
         } catch (error) {
-            console.error("錯誤:", error);
-            alert("呼叫 Gemini API 失敗。請檢查控制台以獲取詳細資訊。");
+            console.log('Error:', error);
         }
     }
 
-    // 更新描述列表
     function updateDescriptions() {
         descriptionsList.innerHTML = '';
-        descriptions.forEach((desc, index) => {
+        descriptions.forEach((desc) => {
             const li = document.createElement('li');
             li.textContent = desc;
             descriptionsList.appendChild(li);
         });
     }
 
-    // 總結描述列表
     async function summarizeList() {
-        if (!apiToken) {
-            alert("請輸入你的 Gemini API Token。");
+        if (!apiToken || descriptions.length === 0) {
             return;
         }
 
-        if (descriptions.length === 0) {
-            alert("沒有描述可以總結。");
-            return;
-        }
-
-        // 準備編號的描述列表
         const listText = descriptions.map((desc, index) => `${index + 1}. ${desc}`).join(', ');
-        
-        // 準備總結 prompt
         const summaryPrompt = `${listText}, 這是一連串影像的行為跟內容，請幫忙總結他目前正在做什麼，然後畫面有什麼行為或者動作，有可能預計要做什麼。`;
 
         try {
-            // 呼叫 Gemini API 進行總結
-            const response = await fetch('https://api.gemini.com/v1/summarize', { // 替換為實際的 Gemini API 端點
+            const generateContentUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-exp-0827:generateContent?key=${apiToken}`;
+            const generateContentBody = {
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { text: summaryPrompt }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 1,
+                    topK: 64,
+                    topP: 0.95,
+                    maxOutputTokens: 8192,
+                    responseMimeType: "text/plain"
+                }
+            };
+
+            const generateContentResponse = await fetch(generateContentUrl, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    prompt: summaryPrompt
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(generateContentBody)
             });
 
-            if (!response.ok) {
-                throw new Error(`API 錯誤: ${response.statusText}`);
+            if (!generateContentResponse.ok) {
+                console.log('GenerateContent API Error:', generateContentResponse.statusText);
+                return;
             }
 
-            const data = await response.json();
-            const summary = data.summary || "未提供總結。";
-
-            // 顯示總結
+            const generateContentData = await generateContentResponse.json();
+            const summary = generateContentData.contents && generateContentData.contents[0].parts
+                ? generateContentData.contents[0].parts[0].text
+                : "未提供總結。";
             summaryText.textContent = summary;
-
         } catch (error) {
-            console.error("錯誤:", error);
-            alert("呼叫 Gemini API 進行總結失敗。請檢查控制台以獲取詳細資訊。");
+            console.log('Error:', error);
         }
     }
 </script>
