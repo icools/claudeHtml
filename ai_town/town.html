@@ -2,20 +2,17 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>AI Town</title>
+  <title>像素風格 AI 村莊</title>
   <style>
     body {
       margin: 0;
-      background-color: #333;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+      background-color: #87CEEB; /* 天空藍背景 */
+      overflow: hidden;
       position: relative;
     }
     canvas {
-      border: 2px solid #fff;
-      image-rendering: pixelated;
+      display: block;
+      image-rendering: pixelated; /* 確保像素風格 */
       background-color: #87CEEB; /* 天空藍背景 */
     }
     /* 對話框樣式 */
@@ -31,80 +28,188 @@
       display: none;
       font-family: Arial, sans-serif;
       pointer-events: none;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas" width="1024" height="768"></canvas>
   <div id="dialogBox"></div>
-  
-  <script>
-    // ai-town.js 內容
 
+  <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const dialogBox = document.getElementById('dialogBox');
 
+    // 定義每個像素塊的大小
+    const PIXEL_SIZE = 10;
+
     // 定義顏色
     const COLORS = {
-      grass: '#228B22',
-      church: '#8B4513',
-      house: '#FFD700',
-      park: '#32CD32',
-      road: '#696969',
+      grass: '#6DBD2A',
+      road: '#8B4513',
+      building: '#C0C0C0',
+      roof: '#A52A2A',
+      window: '#87CEFA',
+      door: '#654321',
       npcMaleYoung: '#1E90FF',
       npcFemaleYoung: '#FF69B4',
       npcMaleOld: '#708090',
       npcFemaleOld: '#FFB6C1',
+      park: '#32CD32',
+      churchRoof: '#A52A2A',
+      churchTower: '#8B4513',
     };
 
     // 定義建築類
     class Building {
-      constructor(type, x, y, width, height) {
-        this.type = type;
+      constructor(x, y, width, height, type) {
+        this.x = x;
+        this.y = y;
+        this.width = width; // 以像素塊數計算
+        this.height = height; // 以像素塊數計算
+        this.type = type; // 'house', 'church', 'park'
+      }
+
+      draw() {
+        for (let row = 0; row < this.height; row++) {
+          for (let col = 0; col < this.width; col++) {
+            let color = COLORS.building;
+            // 特殊處理教堂屋頂
+            if (this.type === 'church' && row < this.height / 2) {
+              color = COLORS.churchRoof;
+            }
+            ctx.fillStyle = color;
+            ctx.fillRect(
+              this.x + col * PIXEL_SIZE,
+              this.y + row * PIXEL_SIZE,
+              PIXEL_SIZE,
+              PIXEL_SIZE
+            );
+            ctx.strokeStyle = '#000';
+            ctx.strokeRect(
+              this.x + col * PIXEL_SIZE,
+              this.y + row * PIXEL_SIZE,
+              PIXEL_SIZE,
+              PIXEL_SIZE
+            );
+          }
+        }
+
+        // 添加門和窗戶
+        if (this.type === 'house' || this.type === 'church') {
+          // 門
+          ctx.fillStyle = COLORS.door;
+          ctx.fillRect(
+            this.x + Math.floor(this.width / 2) * PIXEL_SIZE - PIXEL_SIZE,
+            this.y + (this.height - 4) * PIXEL_SIZE,
+            PIXEL_SIZE * 2,
+            PIXEL_SIZE * 4
+          );
+          // 窗戶
+          ctx.fillStyle = COLORS.window;
+          ctx.fillRect(
+            this.x + PIXEL_SIZE * 2,
+            this.y + PIXEL_SIZE * 3,
+            PIXEL_SIZE * 2,
+            PIXEL_SIZE * 2
+          );
+          ctx.fillRect(
+            this.x + this.width * PIXEL_SIZE - PIXEL_SIZE * 4,
+            this.y + PIXEL_SIZE * 3,
+            PIXEL_SIZE * 2,
+            PIXEL_SIZE * 2
+          );
+        }
+
+        // 教堂塔樓
+        if (this.type === 'church') {
+          // 塔樓
+          ctx.fillStyle = COLORS.churchTower;
+          ctx.fillRect(
+            this.x + Math.floor(this.width / 2) * PIXEL_SIZE - PIXEL_SIZE,
+            this.y - PIXEL_SIZE * 10,
+            PIXEL_SIZE * 2,
+            PIXEL_SIZE * 10
+          );
+          // 十字架
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(
+            this.x + Math.floor(this.width / 2) * PIXEL_SIZE,
+            this.y - PIXEL_SIZE * 10
+          );
+          ctx.lineTo(
+            this.x + Math.floor(this.width / 2) * PIXEL_SIZE,
+            this.y - PIXEL_SIZE * 15
+          );
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(
+            this.x + Math.floor(this.width / 2) * PIXEL_SIZE - PIXEL_SIZE,
+            this.y - PIXEL_SIZE * 12
+          );
+          ctx.lineTo(
+            this.x + Math.floor(this.width / 2) * PIXEL_SIZE + PIXEL_SIZE,
+            this.y - PIXEL_SIZE * 12
+          );
+          ctx.stroke();
+        }
+      }
+    }
+
+    // 定義房間類（室內）
+    class Room {
+      constructor(x, y, width, height, name) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+        this.name = name;
       }
 
       draw() {
-        ctx.fillStyle = COLORS[this.type];
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-        
-        // 添加簡單的細節
+        ctx.fillStyle = '#F5F5DC';
+        ctx.fillRect(
+          this.x,
+          this.y,
+          this.width * PIXEL_SIZE,
+          this.height * PIXEL_SIZE
+        );
         ctx.strokeStyle = '#000';
-        ctx.strokeRect(this.x, this.y, this.width, this.height);
-        if (this.type === 'church') {
-          // 畫教堂的尖頂
-          ctx.beginPath();
-          ctx.moveTo(this.x, this.y);
-          ctx.lineTo(this.x + this.width / 2, this.y - this.height / 2);
-          ctx.lineTo(this.x + this.width, this.y);
-          ctx.closePath();
-          ctx.fillStyle = '#A52A2A';
-          ctx.fill();
-          ctx.stroke();
-        }
-        // 可根據建築類型添加更多細節
+        ctx.strokeRect(
+          this.x,
+          this.y,
+          this.width * PIXEL_SIZE,
+          this.height * PIXEL_SIZE
+        );
+
+        // 房間名稱
+        ctx.fillStyle = '#000';
+        ctx.font = '12px Arial';
+        ctx.fillText(
+          this.name,
+          this.x + PIXEL_SIZE,
+          this.y + PIXEL_SIZE * 2
+        );
       }
     }
 
     // 定義角色類
     class Character {
-      constructor(name, type, x, y, role) {
+      constructor(name, gender, age, x, y, role) {
         this.name = name;
-        this.type = type; // npcMaleYoung, npcFemaleYoung, npcMaleOld, npcFemaleOld
+        this.gender = gender; // 'male', 'female'
+        this.age = age;
         this.x = x;
         this.y = y;
-        this.size = 32;
-        this.speed = 1.5;
-        this.direction = 'right';
-        this.moving = false;
-        this.role = role;
-        this.memory = [];
-        this.color = COLORS[this.type];
+        this.size = PIXEL_SIZE * 3;
+        this.speed = 1 + Math.random(); // 隨機速度
         this.target = this.getRandomTarget();
+        this.memory = [];
+        this.color = this.gender === 'male' ? COLORS.npcMaleYoung : COLORS.npcFemaleYoung;
       }
 
       getRandomTarget() {
@@ -115,15 +220,30 @@
       }
 
       draw() {
+        // 身體
         ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.size, this.size);
+        ctx.fillRect(
+          this.x,
+          this.y,
+          this.size,
+          this.size
+        );
         ctx.strokeStyle = '#000';
-        ctx.strokeRect(this.x, this.y, this.size, this.size);
-        
-        // 顯示名字
-        ctx.fillStyle = '#fff';
+        ctx.strokeRect(
+          this.x,
+          this.y,
+          this.size,
+          this.size
+        );
+
+        // 顯示名字和年齡
+        ctx.fillStyle = '#000';
         ctx.font = '12px Arial';
-        ctx.fillText(this.name, this.x, this.y - 5);
+        ctx.fillText(
+          `${this.name} (${this.age})`,
+          this.x - PIXEL_SIZE,
+          this.y - PIXEL_SIZE
+        );
       }
 
       update() {
@@ -139,10 +259,10 @@
         }
       }
 
-      interact(otherCharacter) {
-        const interaction = `${this.name} 和 ${otherCharacter.name} 進行了互動。`;
+      interact(other) {
+        const interaction = `${this.name} 和 ${other.name} 進行了交談。`;
         this.memory.push(interaction);
-        otherCharacter.memory.push(interaction);
+        other.memory.push(interaction);
         showDialog(interaction);
         console.log(interaction);
       }
@@ -150,34 +270,46 @@
 
     // 創建建築實例
     const buildings = [
-      new Building('house', 100, 500, 100, 100),
-      new Building('house', 300, 500, 100, 100),
-      new Building('church', 600, 400, 150, 150),
-      new Building('park', 800, 500, 150, 100),
+      new Building(50, 400, 20, 20, 'house'),
+      new Building(300, 400, 20, 20, 'house'),
+      new Building(550, 300, 25, 25, 'church'),
+      new Building(800, 450, 15, 10, 'park'),
+    ];
+
+    // 創建房間實例
+    const rooms = [
+      new Room(600, 350, 10, 5, '教室'),
+      new Room(650, 350, 10, 5, '圖書館'),
     ];
 
     // 創建角色實例
     const characters = [
-      new Character('John', 'npcMaleYoung', 120, 520, 'Farmer'),
-      new Character('Jane', 'npcFemaleYoung', 320, 520, 'Teacher'),
-      new Character('Robert', 'npcMaleOld', 620, 420, 'Retired'),
-      new Character('Emily', 'npcFemaleOld', 820, 520, 'Baker'),
+      new Character('小明', 'male', 25, 60, 410, '農夫'),
+      new Character('小紅', 'female', 22, 310, 410, '教師'),
+      new Character('老張', 'male', 60, 560, 310, '退休'),
+      new Character('小美', 'female', 18, 810, 460, '麵包師傅'),
     ];
 
-    // 繪製背景
-    function drawBackground() {
-      // 繪製草地
+    // 繪製草地
+    function drawGrass() {
       ctx.fillStyle = COLORS.grass;
-      ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
-
-      // 繪製道路
-      ctx.fillStyle = COLORS.road;
-      ctx.fillRect(0, canvas.height - 120, canvas.width, 20);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 繪製所有建築
+    // 繪製道路
+    function drawRoad() {
+      ctx.fillStyle = COLORS.road;
+      ctx.fillRect(0, canvas.height - PIXEL_SIZE * 12, canvas.width, PIXEL_SIZE * 2);
+    }
+
+    // 繪製建築物
     function drawBuildings() {
       buildings.forEach(building => building.draw());
+    }
+
+    // 繪製房間（室內）
+    function drawRooms() {
+      rooms.forEach(room => room.draw());
     }
 
     // 顯示對話框
@@ -194,11 +326,15 @@
       // 清除畫布
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 繪製背景
-      drawBackground();
+      // 繪製草地和道路
+      drawGrass();
+      drawRoad();
 
       // 繪製建築
       drawBuildings();
+
+      // 繪製房間
+      drawRooms();
 
       // 更新並繪製角色
       characters.forEach(character => {
@@ -206,13 +342,13 @@
         character.draw();
       });
 
-      // 檢查角色之間的距離並觸發交互
+      // 角色交互
       for (let i = 0; i < characters.length; i++) {
         for (let j = i + 1; j < characters.length; j++) {
           const charA = characters[i];
           const charB = characters[j];
           const distance = Math.hypot(charA.x - charB.x, charA.y - charB.y);
-          if (distance < 50) { // 當距離小於 50 時觸發交互
+          if (distance < PIXEL_SIZE * 3) {
             charA.interact(charB);
           }
         }
@@ -221,8 +357,14 @@
       requestAnimationFrame(gameLoop);
     }
 
-    // 開始遊戲循環
-    requestAnimationFrame(gameLoop);
+    // 開始遊戲
+    gameLoop();
+
+    // 窗口調整時重新設置畫布大小
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
   </script>
 </body>
 </html>
