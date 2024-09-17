@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>動態音頻視覺化</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        #fileInput {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="fileInput" accept="audio/*">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
+    <script>
+        let scene, camera, renderer, analyser, audioContext, source;
+        let uniforms, mesh, clock;
+
+        function init() {
+            // 初始化場景、相機和渲染器
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.z = 50;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            clock = new THREE.Clock();
+
+            // 創建着色器材質，增加動態效果
+            uniforms = {
+                time: { value: 1.0 },
+                amplitude: { value: 0.0 },
+                frequencyData: { value: null },
+                resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+            };
+
+            const shaderMaterial = new THREE.ShaderMaterial({
+                uniforms: uniforms,
+                vertexShader: `
+                    uniform float amplitude;
+                    attribute float displacement;
+                    varying vec3 vNormal;
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        vNormal = normal;
+                        vec3 newPosition = position + normal * vec3(displacement * amplitude * 5.0);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float time;
+                    varying vec3 vNormal;
+                    varying vec2 vUv;
+                    void main() {
+                        float intensity = pow(0.5 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 4.0);
+                        gl_FragColor = vec4(vec3(0.5, 0.8, 1.0) * intensity, 1.0);
+                    }
+                `,
+                wireframe: false,
+                side: THREE.DoubleSide
+            });
+
+            // 創建更複雜的幾何體，例如平面或球體
+            const geometry = new THREE.IcosahedronGeometry(20, 5);
+
+            // 添加位移屬性
+            const displacement = new Float32Array(geometry.attributes.position.count);
+            for (let i = 0; i < displacement.length; i++) {
+                displacement[i] = Math.sin(i);
+            }
+            geometry.setAttribute('displacement', new THREE.BufferAttribute(displacement, 1));
+
+            // 創建網格並添加到場景
+            mesh = new THREE.Mesh(geometry, shaderMaterial);
+            scene.add(mesh);
+
+            // 音頻設置
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 512;
+
+            uniforms.frequencyData.value = new Uint8Array(analyser.frequencyBinCount);
+
+            // 窗口調整
+            window.addEventListener('resize', onWindowResize, false);
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            uniforms.time.value += delta;
+
+            if (uniforms.frequencyData.value && analyser) {
+                analyser.getByteFrequencyData(uniforms.frequencyData.value);
+
+                // 使用頻率數據計算振幅
+                let sum = 0;
+                for (let i = 0; i < uniforms.frequencyData.value.length; i++) {
+                    sum += uniforms.frequencyData.value[i];
+                }
+                uniforms.amplitude.value = sum / uniforms.frequencyData.value.length / 128;
+
+                // 更新位移屬性
+                const positions = mesh.geometry.attributes.position.array;
+                const displacement = mesh.geometry.attributes.displacement.array;
+
+                for (let i = 0; i < displacement.length; i++) {
+                    displacement[i] = Math.sin(0.1 * i + uniforms.time.value * 5.0) * uniforms.amplitude.value;
+                }
+                mesh.geometry.attributes.displacement.needsUpdate = true;
+            }
+
+            mesh.rotation.y += 0.005;
+            mesh.rotation.x += 0.002;
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            uniforms.resolution.value.x = window.innerWidth;
+            uniforms.resolution.value.y = window.innerHeight;
+        }
+
+        // 處理文件上傳
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    audioContext.decodeAudioData(e.target.result, function(buffer) {
+                        if (source) {
+                            source.stop();
+                        }
+                        source = audioContext.createBufferSource();
+                        source.buffer = buffer;
+                        source.connect(analyser);
+                        analyser.connect(audioContext.destination);
+                        source.start(0);
+                    });
+                };
+
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
