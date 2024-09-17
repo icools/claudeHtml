@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLS 四宮格播放器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .input-container {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .input-container input {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .input-container button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-gap: 10px;
+        }
+        .grid-container video {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            background-color: #000;
+        }
+    </style>
+</head>
+<body>
+    <h1>HLS 四宮格播放器</h1>
+    <div class="input-container">
+        <input type="text" id="urlInput1" placeholder="輸入第1個 M3U8 URL">
+        <input type="text" id="urlInput2" placeholder="輸入第2個 M3U8 URL">
+        <input type="text" id="urlInput3" placeholder="輸入第3個 M3U8 URL">
+        <input type="text" id="urlInput4" placeholder="輸入第4個 M3U8 URL">
+        <button id="playButton">播放</button>
+    </div>
+
+    <div class="grid-container">
+        <video id="videoPlayer1" controls></video>
+        <video id="videoPlayer2" controls></video>
+        <video id="videoPlayer3" controls></video>
+        <video id="videoPlayer4" controls></video>
+    </div>
+
+    <script>
+        const playButton = document.getElementById('playButton');
+        const videoPlayers = [
+            document.getElementById('videoPlayer1'),
+            document.getElementById('videoPlayer2'),
+            document.getElementById('videoPlayer3'),
+            document.getElementById('videoPlayer4')
+        ];
+        const urlInputs = [
+            document.getElementById('urlInput1'),
+            document.getElementById('urlInput2'),
+            document.getElementById('urlInput3'),
+            document.getElementById('urlInput4')
+        ];
+
+        // 儲存並加載 URL
+        urlInputs.forEach((input, index) => {
+            const storedUrl = localStorage.getItem(`lastUrl${index + 1}`);
+            if (storedUrl) {
+                input.value = storedUrl;  // 自動填入上次使用的 URL
+            }
+        });
+
+        playButton.addEventListener('click', () => {
+            urlInputs.forEach((input, index) => {
+                const videoSrc = input.value.trim();
+                const videoPlayer = videoPlayers[index];
+                
+                if (videoSrc) {
+                    localStorage.setItem(`lastUrl${index + 1}`, videoSrc);  // 儲存 URL 到 localStorage
+                    
+                    if (Hls.isSupported()) {
+                        const hls = new Hls();
+                        hls.loadSource(videoSrc);
+                        hls.attachMedia(videoPlayer);
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                            videoPlayer.play();
+                        });
+                    } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                        videoPlayer.src = videoSrc;
+                        videoPlayer.addEventListener('loadedmetadata', () => {
+                            videoPlayer.play();
+                        });
+                    } else {
+                        console.error(`This browser does not support HLS for video ${index + 1}`);
+                        alert(`您的瀏覽器不支持 HLS 播放 第${index + 1}個串流`);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

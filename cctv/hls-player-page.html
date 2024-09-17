@@ -37,6 +37,13 @@
         #screenshotContainer {
             margin-top: 20px;
         }
+        #screenshotContainer img {
+            width: 300px;
+            height: auto;
+            display: block;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -99,14 +106,21 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
 
-            // 下載截圖
+            // 生成截圖並顯示
             const screenshotUrl = canvas.toDataURL('image/png');
-            const downloadLink = document.createElement('a');
-            downloadLink.href = screenshotUrl;
-            downloadLink.download = 'screenshot.png';
-            downloadLink.textContent = '點此下載截圖';
-            screenshotContainer.innerHTML = '';  // 清空上次的截圖
-            screenshotContainer.appendChild(downloadLink);
+            const img = document.createElement('img');
+            img.src = screenshotUrl;
+
+            // 點擊圖片下載截圖
+            img.addEventListener('click', () => {
+                const downloadLink = document.createElement('a');
+                downloadLink.href = screenshotUrl;
+                downloadLink.download = 'screenshot.png';
+                downloadLink.click();  // 模擬點擊下載
+            });
+
+            // 持續添加截圖到容器
+            screenshotContainer.appendChild(img);
         });
     </script>
 </body>
