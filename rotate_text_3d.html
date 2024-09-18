@@ -147,6 +147,21 @@
                 }
             }
 
+            function createCharsByQueryString(str) {
+              const strLength = str.length;
+
+              for (let i = 0; i < MAX_CHARS; i++) {
+                  // 從指定的字串中隨機選取一個字元
+                  const CHARACTER = str[i % strLength];  // 循環顯示 "GPT"
+                  const X = signedRandom() * SEPARATION;
+                  const Y = signedRandom() * SEPARATION;
+                  const Z = signedRandom() * SEPARATION;
+                  const POS = new Vector(X, Y, Z);
+                  const CHAR = new Char(CHARACTER, POS);
+                  CHARS.push(CHAR);
+              }
+          }
+
             function setDim() {
                 ww = window.innerWidth;
                 wh = window.innerHeight;
@@ -163,11 +178,16 @@
                 setDim();
             };
 
-            // Initialize the scene
             (function init() {
                 setDim();
                 initCamera();
-                createChars();
+                const params = new URLSearchParams(window.location.search);
+                const text = params.get('text');
+                if (text) {
+                  createCharsByQueryString(text);
+                } else {
+                  createChars();
+                }
                 loop();
             })();
         };
