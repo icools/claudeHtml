@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Scene with Physics and Particle Effects</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        Click to add new objects<br>
+        Use mouse to rotate camera
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script>
+        let scene, camera, renderer, world;
+        let meshes = [], bodies = [];
+        let particleSystems = [];
+
+        function init() {
+            // Three.js setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            // Cannon.js setup
+            world = new CANNON.World();
+            world.gravity.set(0, -9.82, 0);
+
+            // Add ground
+            const groundShape = new CANNON.Plane();
+            const groundBody = new CANNON.Body({ mass: 0 });
+            groundBody.addShape(groundShape);
+            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+            world.addBody(groundBody);
+
+            const groundGeometry = new THREE.PlaneGeometry(50, 50);
+            const groundMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+            const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+            groundMesh.rotation.x = -Math.PI / 2;
+            scene.add(groundMesh);
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize, false);
+            document.addEventListener('click', addObject, false);
+            document.addEventListener('mousemove', onDocumentMouseMove, false);
+
+            animate();
+        }
+
+        function addObject(event) {
+            const x = (event.clientX / window.innerWidth) * 2 - 1;
+            const y = -(event.clientY / window.innerHeight) * 2 + 1;
+            const z = Math.random() * 2 - 1;
+
+            const radius = 0.5;
+            const geometry = new THREE.SphereGeometry(radius, 32, 32);
+            const material = new THREE.MeshPhongMaterial({ color: Math.random() * 0xffffff });
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+            meshes.push(mesh);
+
+            const shape = new CANNON.Sphere(radius);
+            const body = new CANNON.Body({
+                mass: 1,
+                shape: shape,
+                position: new CANNON.Vec3(x * 5, 5, z * 5)
+            });
+            world.addBody(body);
+            bodies.push(body);
+        }
+
+        function createParticleSystem(position) {
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particleCount = 100;
+
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                positions[i3] = position.x + (Math.random() - 0.5) * 0.5;
+                positions[i3 + 1] = position.y + (Math.random() - 0.5) * 0.5;
+                positions[i3 + 2] = position.z + (Math.random() - 0.5) * 0.5;
+
+                colors[i3] = Math.random();
+                colors[i3 + 1] = Math.random();
+                colors[i3 + 2] = Math.random();
+            }
+
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.05,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particleSystem);
+            particleSystems.push({ system: particleSystem, createdAt: Date.now() });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            world.step(1 / 60);
+
+            for (let i = 0; i < meshes.length; i++) {
+                meshes[i].position.copy(bodies[i].position);
+                meshes[i].quaternion.copy(bodies[i].quaternion);
+            }
+
+            // Check for collisions
+            for (let i = 0; i < bodies.length; i++) {
+                for (let j = i + 1; j < bodies.length; j++) {
+                    const bi = bodies[i];
+                    const bj = bodies[j];
+                    const ri = bi.shapes[0].radius;
+                    const rj = bj.shapes[0].radius;
+                    const dist = bi.position.distanceTo(bj.position);
+                    if (dist < ri + rj) {
+                        const midpoint = bi.position.vadd(bj.position).scale(0.5);
+                        createParticleSystem(midpoint);
+                    }
+                }
+            }
+
+            // Update and remove old particle systems
+            const currentTime = Date.now();
+            for (let i = particleSystems.length - 1; i >= 0; i--) {
+                const ps = particleSystems[i];
+                const age = currentTime - ps.createdAt;
+                if (age > 1000) {
+                    scene.remove(ps.system);
+                    particleSystems.splice(i, 1);
+                } else {
+                    const scale = 1 + age / 1000;
+                    ps.system.scale.set(scale, scale, scale);
+                    ps.system.material.opacity = 1 - age / 1000;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onDocumentMouseMove(event) {
+            const mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            const mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            camera.position.x = Math.sin(mouseX * Math.PI) * 10;
+            camera.position.z = Math.cos(mouseX * Math.PI) * 10;
+            camera.position.y = mouseY * 5 + 5;
+            camera.lookAt(0, 0, 0);
+        }
+
+        init();
+    </script>
+</body>
+</html>
