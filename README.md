@@ -1,11 +1,16 @@
-html Made by claude 3.5 
+all html Made by 
 
-# can use 
+- claude 3.5
+- ChatGpt o1-mini
+- ChatGpt o1-preview
 
-webgl
-3d.js
-tensorflow.js
+# Stack
+
+- webgl
+- 3d.js
+- tensorflow.js
 
 # game
-貪吃蛇
-doom
+
+- snack
+- doom
