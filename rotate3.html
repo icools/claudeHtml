@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balanced 3D Scene</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        Click on objects to change their color<br>
+        Use arrow keys to move the camera
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, cube, sphere, torus;
+        let mouseX = 0, mouseY = 0;
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            // Objects
+            const geometry1 = new THREE.BoxGeometry();
+            const geometry2 = new THREE.SphereGeometry(0.5, 32, 32);
+            const geometry3 = new THREE.TorusGeometry(0.3, 0.2, 16, 100);
+
+            const material1 = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+            const material2 = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+            const material3 = new THREE.MeshPhongMaterial({ color: 0x0000ff });
+
+            cube = new THREE.Mesh(geometry1, material1);
+            sphere = new THREE.Mesh(geometry2, material2);
+            torus = new THREE.Mesh(geometry3, material3);
+
+            cube.position.x = -1.5;
+            sphere.position.x = 0;
+            torus.position.x = 1.5;
+
+            scene.add(cube);
+            scene.add(sphere);
+            scene.add(torus);
+
+            camera.position.z = 5;
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize, false);
+            document.addEventListener('mousemove', onDocumentMouseMove, false);
+            document.addEventListener('click', onDocumentMouseClick, false);
+            document.addEventListener('keydown', onDocumentKeyDown, false);
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+
+            sphere.rotation.x += 0.02;
+            sphere.rotation.y += 0.02;
+
+            torus.rotation.x += 0.03;
+            torus.rotation.y += 0.03;
+
+            camera.position.x += (mouseX - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY - camera.position.y) * 0.05;
+            camera.lookAt(scene.position);
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onDocumentMouseMove(event) {
+            mouseX = (event.clientX - window.innerWidth / 2) / 100;
+            mouseY = (event.clientY - window.innerHeight / 2) / 100;
+        }
+
+        function onDocumentMouseClick(event) {
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children);
+
+            for (let i = 0; i < intersects.length; i++) {
+                intersects[i].object.material.color.setHex(Math.random() * 0xffffff);
+            }
+        }
+
+        function onDocumentKeyDown(event) {
+            const keyCode = event.which;
+            if (keyCode == 38) {
+                camera.position.z -= 0.1;
+            } else if (keyCode == 40) {
+                camera.position.z += 0.1;
+            } else if (keyCode == 37) {
+                camera.position.x -= 0.1;
+            } else if (keyCode == 39) {
+                camera.position.x += 0.1;
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
