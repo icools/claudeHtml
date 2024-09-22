@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouBike Availability Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        #dashboard {
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 800px; /* 設定寬度以適應 4x4 格局 */
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 設定 4 列 */
+            grid-gap: 10px;
+        }
+        .data-item {
+            background-color: #e0f7fa;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        .data-item h2 {
+            font-size: 18px;
+            margin: 0 0 10px;
+        }
+        .data-item p {
+            font-size: 24px;
+            margin: 5px 0;
+            color: #0073e6;
+        }
+    </style>
+</head>
+<body>
+    <div id="dashboard">
+        <!-- 16 個站點資料項目 -->
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-0">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-1">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-2">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-3">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-4">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-5">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-6">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-7">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-8">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-9">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-10">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-11">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-12">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-13">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-14">--</p>
+        </div>
+        <div class="data-item">
+            <h2>Station Name</h2>
+            <p id="station-15">--</p>
+        </div>
+    </div>
+
+    <script>
+        function updateYouBikeData() {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json", true);
+
+            xhr.onload = function () {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        // 更新 16 個站點資料
+                        for (var i = 0; i < 16; i++) {
+                            var station = data[i];
+                            var stationElement = document.getElementById('station-' + i);
+                            if (station && stationElement) {
+                                stationElement.textContent = "剩餘空位: " + station.sbi; // 顯示剩餘車位數
+                                stationElement.previousElementSibling.textContent = station.sna; // 顯示站點名稱
+                            }
+                        }
+                    } catch (error) {
+                        alert("Error parsing JSON data: " + error.message);
+                    }
+                } else {
+                    alert("Failed to load YouBike data: " + xhr.statusText);
+                }
+            };
+
+            xhr.onerror = function () {
+                alert("Error during the request.");
+            };
+
+            xhr.send();
+        }
+
+        // 初始化時更新 YouBike 資料
+        updateYouBikeData();
+
+        // 每 1 分鐘更新一次 YouBike 資料
+        setInterval(updateYouBikeData, 60000);
+    </script>
+</body>
+</html>
