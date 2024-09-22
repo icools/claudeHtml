@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processing Sketch</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+</head>
+<body>
+    <script>
+        let a = (x, y, d = 5 * Math.cos(Math.sqrt(Math.pow(x / 8 - 25, 2) + Math.pow(y / 8 - 25, 2)) / 3)) => [
+            (x + d * (x / 8 - 25) * Math.sin(d * 2.5 - t) + (x / 8 - 25) / 2 * Math.sin(y / 3 + t)) / 2 + 100,
+            d * 19 + (d - 2) * 5 * Math.abs(Math.cos(d / 2 - t / 2)) + d * (y / 8 - 25) + 215
+        ];
+        let t = 0;
+        function setup() {
+            createCanvas(400, 400);
+            background(6);
+            stroke(255, 66);
+        }
+        function draw() {
+            for (t += PI / 60, y = 100; y < 300; y++) {
+                for (x = 100; x < 300; x++) {
+                    point(...a(x, y));
+                }
+            }
+        }
+    </script>
+</body>
+</html>
