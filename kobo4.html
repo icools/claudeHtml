@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Weather Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        #dashboard {
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 400px;
+            border-radius: 10px;
+        }
+        .data-item {
+            margin: 20px 0;
+        }
+        .data-item h1 {
+            font-size: 36px;
+            margin: 10px 0;
+            color: #0073e6;
+        }
+        .data-item p {
+            font-size: 18px;
+            margin: 5px 0;
+        }
+        .data-item span {
+            font-size: 16px;
+            color: #555;
+        }
+        #footer {
+            font-size: 14px;
+            margin-top: 20px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div id="dashboard">
+        <div class="data-item">
+            <p>Location</p>
+            <h1 id="location">--</h1>
+            <span id="publish-time">--</span>
+        </div>
+        <div class="data-item">
+            <p>Temperature (°C)</p>
+            <h1 id="temperature">--</h1>
+            <span id="weather">--</span>
+        </div>
+        <div class="data-item">
+            <p>Rain Probability (%)</p>
+            <h1 id="rain-probability">--</h1>
+        </div>
+    </div>
+    <div id="footer">
+        Data updates every 10 seconds
+    </div>
+
+    <script>
+        function updateWeatherData() {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "https://opendata.cwb.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization=CWB-XXXXXX&locationName=%E5%8F%B0%E5%8C%97%E5%B8%82", true);
+
+            xhr.onload = function () {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        var location = data.records.location[0];
+                        var weatherElement = location.weatherElement;
+
+                        document.getElementById('location').textContent = location.locationName;
+                        document.getElementById('publish-time').textContent = "Published at: " + data.records.datasetDescription;
+                        document.getElementById('temperature').textContent = weatherElement[2].time[0].parameter.parameterName;
+                        document.getElementById('weather').textContent = "Weather: " + weatherElement[0].time[0].parameter.parameterName;
+                        document.getElementById('rain-probability').textContent = weatherElement[1].time[0].parameter.parameterName;
+                    } catch (error) {
+                        alert("Error parsing JSON data: " + error.message);
+                    }
+                } else {
+                    alert("Failed to load weather data: " + xhr.statusText);
+                }
+            };
+
+            xhr.onerror = function () {
+                alert("Error during the request.");
+            };
+
+            xhr.send();
+        }
+
+        // 初始化時更新 Weather 資料
+        updateWeatherData();
+
+        // 每 10 秒更新一次 Weather 資料
+        setInterval(updateWeatherData, 10000);
+    </script>
+</body>
+</html>
