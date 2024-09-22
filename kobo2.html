@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard - Feature Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        #dashboard {
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 300px;
+            border-radius: 10px;
+        }
+        .data-item {
+            margin: 20px 0;
+        }
+        .data-item h1 {
+            font-size: 48px;
+            margin: 10px 0;
+            color: #0073e6;
+        }
+        .data-item p {
+            font-size: 18px;
+            margin: 5px 0;
+        }
+        #feature-tests {
+            font-size: 14px;
+            margin-top: 20px;
+            text-align: left;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div id="dashboard">
+        <div class="data-item">
+            <p>Temperature</p>
+            <h1 id="temperature">-- °C</h1>
+        </div>
+        <div class="data-item">
+            <p>Chance of Rain</p>
+            <h1 id="rain-chance">-- %</h1>
+        </div>
+        <div id="feature-tests">
+            <p><strong>Feature Support Test:</strong></p>
+            <ul id="test-results">
+                <!-- 測試結果將顯示在這裡 -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        var weatherData = {
+            temperature: 28,
+            rainChance: 40
+        };
+
+        function updateDashboard() {
+            try {
+                document.getElementById('temperature').textContent = weatherData.temperature + " °C";
+                document.getElementById('rain-chance').textContent = weatherData.rainChance + " %";
+            } catch (error) {
+                alert("Error updating dashboard: " + error.message);
+            }
+        }
+
+        function simulateWeatherUpdate() {
+            try {
+                weatherData.temperature += Math.floor(Math.random() * 2 - 1);
+                weatherData.rainChance = Math.max(0, Math.min(100, weatherData.rainChance + Math.floor(Math.random() * 5 - 2)));
+                updateDashboard();
+            } catch (error) {
+                alert("Error simulating update: " + error.message);
+            }
+        }
+
+        function addTestResult(message, passed) {
+            var resultList = document.getElementById('test-results');
+            var resultItem = document.createElement('li');
+            resultItem.textContent = message + ": " + (passed ? "Supported" : "Not Supported");
+            resultItem.style.color = passed ? "green" : "red";
+            resultList.appendChild(resultItem);
+        }
+
+        function runFeatureTests() {
+            // 測試基本語法
+            try {
+                var es6Support = false;
+                eval("var test = (a = 0) => a + 1; es6Support = true;");
+                addTestResult("ES6 Arrow Functions", es6Support);
+            } catch (e) {
+                addTestResult("ES6 Arrow Functions", false);
+            }
+
+            // 測試 Promise
+            try {
+                var promiseSupport = typeof Promise !== "undefined";
+                addTestResult("Promises", promiseSupport);
+            } catch (e) {
+                addTestResult("Promises", false);
+            }
+
+            // 測試 Fetch API
+            try {
+                var fetchSupport = typeof fetch !== "undefined";
+                addTestResult("Fetch API", fetchSupport);
+            } catch (e) {
+                addTestResult("Fetch API", false);
+            }
+
+            // 測試 localStorage
+            try {
+                var localStorageSupport = typeof localStorage !== "undefined";
+                addTestResult("localStorage", localStorageSupport);
+            } catch (e) {
+                addTestResult("localStorage", false);
+            }
+
+            // 測試 sessionStorage
+            try {
+                var sessionStorageSupport = typeof sessionStorage !== "undefined";
+                addTestResult("sessionStorage", sessionStorageSupport);
+            } catch (e) {
+                addTestResult("sessionStorage", false);
+            }
+
+            // 測試 Class 支援
+            try {
+                var classSupport = false;
+                eval("class TestClass {}; classSupport = true;");
+                addTestResult("ES6 Classes", classSupport);
+            } catch (e) {
+                addTestResult("ES6 Classes", false);
+            }
+        }
+
+        // 初始化數據看板
+        updateDashboard();
+        // 進行功能測試
+        runFeatureTests();
+        // 每 5 秒更新一次數據 (模擬動態變化)
+        setInterval(simulateWeatherUpdate, 5000);
+    </script>
+</body>
+</html>
