@@ -50,24 +50,29 @@
     </div>
 
     <script>
-        // 模擬天氣數據
-        const weatherData = {
-            temperature: 28, // 攝氏溫度
-            rainChance: 40   // 降雨機率百分比
+        // 簡化語法，避免使用ES6特性
+        var weatherData = {
+            temperature: 28,
+            rainChance: 40
         };
 
-        // 更新數據看板上的內容
         function updateDashboard() {
-            document.getElementById('temperature').textContent = `${weatherData.temperature} °C`;
-            document.getElementById('rain-chance').textContent = `${weatherData.rainChance} %`;
+            try {
+                document.getElementById('temperature').textContent = weatherData.temperature + " °C";
+                document.getElementById('rain-chance').textContent = weatherData.rainChance + " %";
+            } catch (error) {
+                alert("Error updating dashboard: " + error.message);
+            }
         }
 
-        // 模擬動態更新數據
         function simulateWeatherUpdate() {
-            weatherData.temperature += (Math.random() * 2 - 1).toFixed(1); // 隨機調整溫度
-            weatherData.rainChance = Math.max(0, Math.min(100, weatherData.rainChance + Math.floor(Math.random() * 5 - 2))); // 隨機調整降雨機率
-
-            updateDashboard();
+            try {
+                weatherData.temperature += Math.floor(Math.random() * 2 - 1);
+                weatherData.rainChance = Math.max(0, Math.min(100, weatherData.rainChance + Math.floor(Math.random() * 5 - 2)));
+                updateDashboard();
+            } catch (error) {
+                alert("Error simulating update: " + error.message);
+            }
         }
 
         // 初始化數據看板
