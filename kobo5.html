@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS Event Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        #dashboard {
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 400px;
+            border-radius: 10px;
+        }
+        .data-item {
+            margin: 20px 0;
+        }
+        .data-item h1 {
+            font-size: 20px;
+            margin: 10px 0;
+            color: #0073e6;
+        }
+        .data-item p {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+        .data-item span {
+            font-size: 14px;
+            color: #555;
+        }
+        #footer {
+            font-size: 14px;
+            margin-top: 20px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div id="dashboard">
+        <div class="data-item">
+            <h1 id="event-type">Loading...</h1>
+            <p id="event-description">--</p>
+            <span id="event-time">--</span>
+        </div>
+    </div>
+    <div id="footer">
+        Data updates every 10 seconds
+    </div>
+
+    <script>
+        function updateCMSEvents() {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "https://tcgbusfs.blob.core.windows.net/blobtcmsv/TCMSV_all.json", true);
+
+            xhr.onload = function () {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        var event = data[0]; // 取得第一筆事件資料
+                        document.getElementById('event-type').textContent = event.type;
+                        document.getElementById('event-description').textContent = event.content;
+                        document.getElementById('event-time').textContent = "Updated at: " + event.publishTime;
+                    } catch (error) {
+                        alert("Error parsing JSON data: " + error.message);
+                    }
+                } else {
+                    alert("Failed to load CMS events: " + xhr.statusText);
+                }
+            };
+
+            xhr.onerror = function () {
+                alert("Error during the request.");
+            };
+
+            xhr.send();
+        }
+
+        // 初始化時更新 CMS 事件資料
+        updateCMSEvents();
+
+        // 每 10 秒更新一次 CMS 事件資料
+        setInterval(updateCMSEvents, 10000);
+    </script>
+</body>
+</html>
