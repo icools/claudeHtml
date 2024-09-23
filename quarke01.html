@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taiwan Earthquake Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #1e1e1e;
+            color: #ffffff;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            grid-gap: 10px;
+            padding: 10px;
+            height: 100vh;
+        }
+        .panel {
+            background-color: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            padding: 10px;
+            overflow: auto;
+        }
+        .clock {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        #taiwanMap {
+            width: 100%;
+            height: 100%;
+        }
+        .earthquake-info {
+            margin-top: 10px;
+        }
+        .seismograph {
+            width: 100%;
+            height: 100px;
+            background-color: #3a3a3a;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="panel">
+            <div class="clock" id="clock"></div>
+            <div id="location">Location: Taipei, Taiwan</div>
+            <div class="earthquake-info" id="earthquakeInfo"></div>
+        </div>
+        <div class="panel">
+            <svg id="taiwanMap" viewBox="0 0 100 150">
+                <!-- More accurate Taiwan map outline -->
+                <path d="M40,10 Q45,5 50,10 Q60,15 65,25 Q70,40 68,55 
+                         Q66,70 60,85 Q55,100 45,115 Q35,130 30,115 
+                         Q25,100 28,85 Q30,70 35,55 Q38,40 40,10" 
+                      fill="#3a3a3a" stroke="#666" stroke-width="0.5"/>
+                <!-- Simplified county borders -->
+                <path d="M45,20 L55,30 M50,40 L60,50 M45,60 L55,70 
+                         M40,80 L50,90 M35,100 L45,110" 
+                      stroke="#666" stroke-width="0.2"/>
+                <circle id="earthquakeMarker" r="2" fill="red" style="display: none;"/>
+            </svg>
+        </div>
+        <div class="panel">
+            <h3>Seismograph</h3>
+            <div class="seismograph" id="seismograph"></div>
+        </div>
+    </div>
+
+    <script>
+        function updateClock() {
+            const now = moment().utcOffset(8);
+            document.getElementById('clock').textContent = now.format('YYYY-MM-DD HH:mm:ss');
+            document.getElementById('location').textContent = `Location: Taipei, Taiwan (UTC+8)`;
+        }
+
+        function generateRandomEarthquake() {
+            const magnitude = (Math.random() * 2 + 3).toFixed(1);
+            const depth = Math.floor(Math.random() * 20 + 5);
+            const x = Math.random() * 30 + 35; // Adjusted to fit new map
+            const y = Math.random() * 100 + 25;
+            return { magnitude, depth, x, y };
+        }
+
+        function updateEarthquakeInfo() {
+            const earthquake = generateRandomEarthquake();
+            const info = `
+                Magnitude: ${earthquake.magnitude}<br>
+                Depth: ${earthquake.depth} km<br>
+                Location: ${earthquake.x.toFixed(2)}°N, ${earthquake.y.toFixed(2)}°E
+            `;
+            document.getElementById('earthquakeInfo').innerHTML = info;
+
+            // Update earthquake marker on the map
+            const marker = document.getElementById('earthquakeMarker');
+            marker.setAttribute('cx', earthquake.x);
+            marker.setAttribute('cy', earthquake.y);
+            marker.style.display = 'block';
+        }
+
+        function drawSeismograph() {
+            const canvas = document.createElement('canvas');
+            canvas.width = document.getElementById('seismograph').clientWidth;
+            canvas.height = document.getElementById('seismograph').clientHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            for (let x = 0; x < canvas.width; x++) {
+                const y = canvas.height / 2 + Math.sin(x * 0.1) * 20 + (Math.random() - 0.5) * 10;
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            document.getElementById('seismograph').innerHTML = '';
+            document.getElementById('seismograph').appendChild(canvas);
+        }
+
+        setInterval(updateClock, 1000);
+        setInterval(updateEarthquakeInfo, 5000);
+        setInterval(drawSeismograph, 1000);
+        updateClock();
+        updateEarthquakeInfo();
+        drawSeismograph();
+    </script>
+</body>
+</html>
