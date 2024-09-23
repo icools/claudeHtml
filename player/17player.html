@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>FLV 影片上傳與播放</title>
+  <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    #file-input {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>上傳並播放 FLV 影片</h1>
+  <input type="file" id="file-input" accept="video/x-flv" />
+  <video
+    id="my-video"
+    class="video-js vjs-default-skin"
+    controls
+    preload="auto"
+    width="640"
+    height="360"
+    data-setup='{}'
+  >
+    <p class="vjs-no-js">
+      您的瀏覽器不支援 video 標籤。
+    </p>
+  </video>
+
+  <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
+  <script src="https://unpkg.com/videojs-flvjs/dist/videojs-flvjs.min.js"></script>
+  
+  <script>
+    var player = videojs('my-video');
+
+    document.getElementById('file-input').addEventListener('change', function(event) {
+      var file = event.target.files[0];
+      if (file) {
+        var url = URL.createObjectURL(file);
+        player.src({
+          src: url,
+          type: 'video/x-flv'
+        });
+        player.flvjs({});
+        player.load();
+        player.play();
+      }
+    });
+  </script>
+</body>
+</html>
