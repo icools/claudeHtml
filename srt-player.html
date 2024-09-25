@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高級3D音頻播放器與同步字幕</title>
+    <style>
+        /* 全局樣式 */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #121212; /* 深色背景 */
+            color: #FFFFFF; /* 白色文字 */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            perspective: 1000px; /* 添加透視效果 */
+            overflow: hidden;
+        }
+
+        h1 {
+            margin-top: 20px;
+            font-size: 2em;
+            color: #FFD700; /* 金色標題 */
+            transform: rotateY(0deg);
+            transition: transform 1s;
+        }
+
+        h1:hover {
+            transform: rotateY(360deg); /* 懸停時旋轉 */
+        }
+
+        /* 控制區域樣式 */
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: rotateX(0deg);
+            transition: transform 1s;
+        }
+
+        .controls.hidden {
+            display: none; /* 隱藏控制區域 */
+        }
+
+        .controls:hover {
+            transform: rotateX(360deg); /* 懸停時旋轉 */
+        }
+
+        .controls input {
+            margin: 10px 0;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #1E1E1E;
+            color: #FFFFFF;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .controls input:hover {
+            background-color: #FFD700;
+            transform: scale(1.05);
+        }
+
+        /* 音頻播放器樣式 */
+        audio {
+            width: 80%;
+            max-width: 800px;
+            margin-top: 20px;
+            outline: none;
+            transform: rotateZ(0deg);
+            transition: transform 1s;
+            display: none; /* 初始隱藏，待文件上傳後顯示 */
+        }
+
+        audio.show {
+            display: block;
+        }
+
+        audio:hover {
+            transform: rotateZ(10deg); /* 懸停時微旋轉 */
+        }
+
+        /* 頻率波動畫布樣式 */
+        #threeVisualizer {
+            width: 80%;
+            max-width: 800px;
+            height: 300px;
+            background-color: #1E1E1E;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            transform: rotateY(0deg);
+            transition: transform 1s;
+        }
+
+        #threeVisualizer:hover {
+            transform: rotateY(360deg); /* 懸停時旋轉 */
+        }
+
+        /* 字幕區域樣式 */
+        #subtitles {
+            width: 90%;
+            max-width: 900px;
+            min-height: 120px;
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+            font-size: 2.5em; /* 增大字體 */
+            background-color: rgba(0, 0, 0, 0.7);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            transition: opacity 0.5s, transform 1s;
+            opacity: 0;
+            transform: translateZ(0);
+        }
+
+        #subtitles.show {
+            opacity: 1;
+            transform: translateZ(50px); /* 字幕顯示時有深度 */
+        }
+
+        /* 全螢幕按鈕樣式 */
+        .fullscreen-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #FFD700;
+            color: #121212;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s, transform 0.3s;
+            z-index: 1000;
+        }
+
+        .fullscreen-btn:hover {
+            background-color: #e6c200;
+            transform: scale(1.05);
+        }
+
+        /* 3D 可視化容器樣式 */
+        .three-container {
+            width: 80%;
+            max-width: 800px;
+            height: 300px;
+            margin-top: 20px;
+            position: relative;
+            transform: rotateX(0deg) rotateY(0deg);
+            transition: transform 10s linear;
+        }
+
+        .three-container:hover {
+            transform: rotateX(360deg) rotateY(360deg); /* 懸停時自動旋轉 */
+        }
+
+        /* 全螢幕樣式調整 */
+        .fullscreen {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #121212;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen .fullscreen-btn {
+            top: 20px;
+            right: 20px;
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">全螢幕</button>
+    <h1>高級3D音頻播放器與同步字幕</h1>
+    
+    <div class="controls" id="controls">
+        <input type="file" id="audioFile" accept="audio/*" title="選擇音頻文件">
+        <input type="file" id="srtFile" accept=".srt" title="選擇字幕文件 (.srt)">
+    </div>
+    
+    <audio id="audioPlayer" controls></audio>
+    
+    <!-- Three.js 3D 可視化容器 -->
+    <div class="three-container" id="threeVisualizer"></div>
+    
+    <div id="subtitles"></div>
+
+    <!-- 引入 Three.js 庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r150/three.min.js"></script>
+    
+    <script>
+        const audioPlayer = document.getElementById('audioPlayer');
+        const subtitlesDiv = document.getElementById('subtitles');
+        const audioFileInput = document.getElementById('audioFile');
+        const srtFileInput = document.getElementById('srtFile');
+        const controlsDiv = document.getElementById('controls');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        let subtitles = [];
+        let filesLoaded = { audio: false, srt: false };
+        
+        // ------------------ Three.js 3D 可視化設定 ------------------
+        let scene, camera, renderer, analyser, dataArray, bars = [];
+        let audioContext, source;
+
+        function initThreeVisualizer() {
+            const container = document.getElementById('threeVisualizer');
+            scene = new THREE.Scene();
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            camera.position.z = 50;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            container.appendChild(renderer.domElement);
+
+            // 添加燈光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(0, 1, 1).normalize();
+            scene.add(directionalLight);
+
+            // 創建頻譜條
+            const barCount = 64;
+            const spacing = 1.5;
+            for (let i = 0; i < barCount; i++) {
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const material = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
+                const bar = new THREE.Mesh(geometry, material);
+                bar.position.x = (i - barCount / 2) * spacing;
+                bar.position.y = 0;
+                bar.position.z = 0;
+                scene.add(bar);
+                bars.push(bar);
+            }
+
+            // 音頻分析器
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            source = audioContext.createMediaElementSource(audioPlayer);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 128;
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('threeVisualizer');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            analyser.getByteFrequencyData(dataArray);
+
+            // 更新每個條形的高度
+            for (let i = 0; i < bars.length; i++) {
+                const scale = dataArray[i] / 50; // 調整比例以適應視覺效果
+                bars[i].scale.y = scale;
+                bars[i].position.y = scale / 2;
+
+                // 可選：根據頻率改變顏色
+                const hue = (scale / 255) * 360;
+                bars[i].material.color.setHSL(hue / 360, 1, 0.5);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // 初始化 Three.js 可視化
+        initThreeVisualizer();
+        animate();
+
+        // ------------------ 音頻播放控制 ------------------
+        // 音頻文件加載
+        audioFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const audioUrl = URL.createObjectURL(file);
+                audioPlayer.src = audioUrl;
+                filesLoaded.audio = true;
+                checkFilesLoaded();
+            }
+        });
+
+        // 字幕文件加載
+        srtFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.name.endsWith('.srt')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        parseSRT(e.target.result);
+                        alert('字幕加載成功！');
+                        filesLoaded.srt = true;
+                        checkFilesLoaded();
+                    } catch (error) {
+                        alert('字幕解析失敗，請檢查 SRT 文件格式。');
+                        console.error(error);
+                    }
+                };
+                reader.readAsText(file);
+            } else {
+                alert('請選擇一個有效的 .srt 文件。');
+            }
+        });
+
+        // 檢查是否所有文件都已加載
+        function checkFilesLoaded() {
+            if (filesLoaded.audio && filesLoaded.srt) {
+                controlsDiv.classList.add('hidden');
+                audioPlayer.classList.add('show');
+
+                // 嘗試自動播放
+                playAudio();
+            }
+        }
+
+        // 播放音頻
+        function playAudio() {
+            // 確保音頻上下文是活動的
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            // 嘗試播放音頻
+            audioPlayer.play().catch(error => {
+                console.warn('自動播放被瀏覽器阻止，請手動點擊播放按鈕。', error);
+                // 顯示音頻控制器，讓用戶手動播放
+                audioPlayer.controls = true;
+            });
+        }
+
+        // 解析 SRT 文件
+        function parseSRT(srtContent) {
+            const srtLines = srtContent.trim().split(/\r?\n\r?\n/);
+            subtitles = srtLines.map(block => {
+                const lines = block.split(/\r?\n/);
+                if (lines.length >= 3) {
+                    const time = lines[1];
+                    const text = lines.slice(2).join(' ');
+                    const [start, end] = time.split(' --> ').map(timeToSeconds);
+                    return { start, end, text };
+                }
+                return null;
+            }).filter(sub => sub !== null);
+        }
+
+        // 將時間字符串轉換為秒數
+        function timeToSeconds(timeString) {
+            // 將逗號替換為句點，以正確解析秒和毫秒
+            timeString = timeString.replace(',', '.');
+            const [hours, minutes, seconds] = timeString.split(':');
+            return parseInt(hours, 10) * 3600 + parseInt(minutes, 10) * 60 + parseFloat(seconds);
+        }
+
+        // 更新字幕
+        audioPlayer.addEventListener('timeupdate', function() {
+            const currentTime = audioPlayer.currentTime;
+            updateSubtitles(currentTime);
+        });
+
+        function updateSubtitles(currentTime) {
+            const currentSubtitle = subtitles.find(sub => currentTime >= sub.start && currentTime <= sub.end);
+            
+            if (currentSubtitle) {
+                subtitlesDiv.textContent = currentSubtitle.text;
+                subtitlesDiv.classList.add('show');
+            } else {
+                subtitlesDiv.textContent = '';
+                subtitlesDiv.classList.remove('show');
+            }
+        }
+
+        // 確保音頻加載完成後立即更新字幕
+        audioPlayer.addEventListener('loadedmetadata', function() {
+            updateSubtitles(0);
+        });
+
+        // 確保在播放開始時更新字幕
+        audioPlayer.addEventListener('play', function() {
+            updateSubtitles(audioPlayer.currentTime);
+        });
+
+        // ------------------ 全螢幕功能 ------------------
+        fullscreenBtn.addEventListener('click', function() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    alert(`全螢幕模式啟動失敗: ${err.message} (${err.name})`);
+                });
+                fullscreenBtn.textContent = '退出全螢幕';
+            } else {
+                document.exitFullscreen();
+                fullscreenBtn.textContent = '全螢幕';
+            }
+        });
+
+        // 監聽全螢幕變化以更新按鈕文字
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                fullscreenBtn.textContent = '全螢幕';
+            }
+        });
+    </script>
+</body>
+</html>
