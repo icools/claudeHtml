@@ -12,11 +12,16 @@
     #file-input {
       margin-bottom: 20px;
     }
+    #custom-progress {
+      width: 640px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <h1>上傳並播放 FLV 影片</h1>
   <input type="file" id="file-input" accept="video/x-flv" />
+  
   <video
     id="my-video"
     class="video-js vjs-default-skin"
@@ -30,26 +35,58 @@
       您的瀏覽器不支援 video 標籤。
     </p>
   </video>
-
+  
+  <input type="range" id="custom-progress" value="0" min="0" max="100" step="0.1">
+  
   <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flv.js/1.6.2/flv.min.js"></script>
   <script src="https://unpkg.com/videojs-flvjs/dist/videojs-flvjs.min.js"></script>
   
   <script>
-    var player = videojs('my-video');
+    var player = videojs('my-video', {
+      flvjs: {
+        enableWorker: true,
+        enableStashBuffer: false
+      }
+    });
+
+    var customProgress = document.getElementById('custom-progress');
 
     document.getElementById('file-input').addEventListener('change', function(event) {
       var file = event.target.files[0];
       if (file) {
         var url = URL.createObjectURL(file);
+        player.pause();
+        player.reset();
         player.src({
           src: url,
           type: 'video/x-flv'
         });
-        player.flvjs({});
+        player.flvjs({
+          enableWorker: true,
+          enableStashBuffer: false
+        });
         player.load();
         player.play();
       }
+    });
+
+    player.on('loadedmetadata', function() {
+      customProgress.value = 0;
+    });
+
+    player.on('timeupdate', function() {
+      var current = player.currentTime();
+      var duration = player.duration();
+      if (duration > 0) {
+        customProgress.value = (current / duration) * 100;
+      }
+    });
+
+    customProgress.addEventListener('input', function() {
+      var duration = player.duration();
+      var seekTime = (customProgress.value / 100) * duration;
+      player.currentTime(seekTime);
     });
   </script>
 </body>
