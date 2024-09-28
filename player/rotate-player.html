@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Character Animation with Subtitles</title>
+    <title>Srt With Text Player</title>
     <style>
-        /* Reset default margins and paddings */
+        /* 重置默认样式 */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        /* Body styles */
+        /* 页面主体样式 */
         body {
             overflow: hidden;
             background-color: #000;
@@ -24,7 +24,7 @@
             font-family: Arial, sans-serif;
         }
 
-        /* Top bar styles */
+        /* 顶部工具栏样式 */
         .top-bar {
             width: 100%;
             padding: 10px;
@@ -70,7 +70,7 @@
             background-color: #555;
         }
 
-        /* Canvas styles */
+        /* 画布样式 */
         canvas {
             display: block;
             width: 100%;
@@ -79,7 +79,7 @@
             cursor: pointer;
         }
 
-        /* Audio player styles */
+        /* 音频播放器样式 */
         .audio-player {
             margin-left: auto;
             display: flex;
@@ -90,7 +90,7 @@
             width: 300px;
         }
 
-        /* Fixed bottom subtitle */
+        /* 底部字幕样式 */
         .fixed-bottom {
             position: fixed;
             bottom: 10px;
@@ -109,23 +109,23 @@
     </style>
 </head>
 <body>
-    <!-- Top bar with upload buttons and audio player -->
+    <!-- 顶部工具栏 -->
     <div class="top-bar" id="topBar">
-        <!-- Upload WAV -->
+        <!-- 上传 WAV 文件 -->
         <div>
             <input type="file" id="uploadWav" accept=".wav">
             <label for="uploadWav">上傳 WAV</label>
         </div>
-        <!-- Upload SRT -->
+        <!-- 上传 SRT 文件 -->
         <div>
             <input type="file" id="uploadSrt" accept=".srt">
             <label for="uploadSrt">上傳 SRT</label>
         </div>
-        <!-- Full Screen Button -->
+        <!-- 全屏按钮 -->
         <div>
             <button id="fullScreenBtn">Full</button>
         </div>
-        <!-- Audio Player -->
+        <!-- 音频播放器 -->
         <div class="audio-player">
             <audio controls id="audioPlayer">
                 <source src="" type="audio/wav">
@@ -134,10 +134,10 @@
         </div>
     </div>
 
-    <!-- Canvas -->
+    <!-- 画布 -->
     <canvas id="animationCanvas"></canvas>
 
-    <!-- Fixed Bottom Subtitle -->
+    <!-- 固定底部字幕 -->
     <div class="fixed-bottom" id="fixedSubtitle">
         <h2 id="currentSubtitle">目前沒有字幕顯示。</h2>
     </div>
@@ -187,8 +187,8 @@
             }
 
             class Char {
-                constructor(letter, pos) {
-                    this.letter = letter;
+                constructor(content, pos) {
+                    this.content = content;
                     this.pos = pos;
                 }
 
@@ -208,7 +208,7 @@
 
                     CTX.fillStyle = COL;
                     CTX.font = `${SIZE}px monospace`;
-                    CTX.fillText(this.letter, XP, YP);
+                    CTX.fillText(this.content, XP, YP);
                 }
             }
 
@@ -244,8 +244,8 @@
                 render();
             }
 
-            function getRandomInt(min, max) {
-                return Math.floor(Math.random() * (max - min + 1)) + min;
+            function isAllEnglish(str) {
+                return /^[A-Za-z0-9\s.,'";:!?()\-]+$/.test(str);
             }
 
             function createChars() {
@@ -263,15 +263,23 @@
 
             function createCharsByQueryString(str) {
                 CHARS = [];
-                const strLength = str.length;
+                let elements = [];
+
+                if (isAllEnglish(str)) {
+                    elements = str.split(' ').filter(word => word.length > 0);
+                } else {
+                    elements = str.split('');
+                }
+
+                const elementsLength = elements.length;
 
                 for (let i = 0; i < MAX_CHARS; i++) {
-                    const CHARACTER = str[i % strLength];
+                    const ELEMENT = elements[i % elementsLength];
                     const X = signedRandom() * SEPARATION;
                     const Y = signedRandom() * SEPARATION;
                     const Z = signedRandom() * SEPARATION;
                     const POS = new Vector(X, Y, Z);
-                    const CHAR = new Char(CHARACTER, POS);
+                    const CHAR = new Char(ELEMENT, POS);
                     CHARS.push(CHAR);
                 }
             }
@@ -292,7 +300,7 @@
                 setDim();
             };
 
-            // Handle file uploads
+            // 处理文件上传
             document.getElementById('uploadWav').addEventListener('change', function (e) {
                 const file = e.target.files[0];
                 if (file) {
@@ -302,7 +310,7 @@
                 }
             });
 
-            // Subtitle handling
+            // 字幕处理
             let subtitles = [];
             let currentSubtitleIndex = -1;
             let firstSubtitleDisplayed = false;
@@ -348,7 +356,7 @@
                 return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
             }
 
-            // Update 3D chars based on current subtitle
+            // 根据当前字幕更新 3D 文本
             const audioPlayer = document.getElementById('audioPlayer');
             const subtitleElement = document.getElementById('currentSubtitle');
 
@@ -378,7 +386,7 @@
                 }
             });
 
-            // Handle canvas click to update 3D text
+            // 点击画布更新 3D 文本
             CANVAS.addEventListener('click', function() {
                 const currentTime = audioPlayer.currentTime;
                 let subtitle = null;
@@ -395,7 +403,7 @@
                 }
             });
 
-            // Handle subtitle click to toggle top bar
+            // 点击底部字幕切换顶部工具栏的显示
             document.getElementById('fixedSubtitle').addEventListener('click', function() {
                 const topBar = document.getElementById('topBar');
                 if (topBar.style.display === 'none') {
@@ -405,7 +413,7 @@
                 }
             });
 
-            // Handle Full Screen toggle
+            // 全屏切换功能
             document.getElementById('fullScreenBtn').addEventListener('click', function() {
                 if (!document.fullscreenElement) {
                     document.documentElement.requestFullscreen();
