@@ -41,33 +41,46 @@
         }
 
         .subtitle-display {
+            display: none;
             position: relative;
             width: 100%;
             min-height: 50px;
             background-color: #000;
             color: #fff;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 10px;
             box-sizing: border-box;
-            font-size: 2em;
             word-wrap: break-word;
             cursor: pointer;
         }
 
-        #currentTime {
-            font-size: 1em;
-            margin-bottom: 10px;
+        .subtitle-display .subtitle1, .subtitle-display .subtitle2 {
+            width: 100%;
             text-align: center;
+        }
+
+        .subtitle-display .subtitle2 {
+            margin-top: 5px;
+        }
+
+        #currentTime {
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-align: left;
         }
 
         @media (max-width: 600px) {
             .container {
                 width: 85%;
             }
-            .subtitle-display {
+            .subtitle-display .subtitle1 {
                 font-size: 1.5em;
+            }
+            .subtitle-display .subtitle2 {
+                font-size: 1.2em;
             }
         }
 
@@ -93,7 +106,8 @@
     <div class="container">
         <div id="currentTime">00:00:00.000</div>
         <div class="subtitle-display" id="subtitleDisplay">
-            字幕將顯示在此處
+            <div class="subtitle1" id="subtitle1"></div>
+            <div class="subtitle2" id="subtitle2"></div>
         </div>
         <div id="mainControls">
             <h1>NotebookLM + SRT Player</h1>
@@ -104,8 +118,12 @@
                     <input type="file" id="audioFile" accept="audio/*">
                 </label>
                 <label>
-                    上傳字幕檔案 (SRT 格式):
-                    <input type="file" id="subtitleFile" accept=".srt">
+                    上傳字幕檔案 (主字幕, SRT 格式):
+                    <input type="file" id="subtitleFile1" accept=".srt">
+                </label>
+                <label>
+                    上傳第二軌字幕 (翻譯, SRT 格式):
+                    <input type="file" id="subtitleFile2" accept=".srt">
                 </label>
             </div>
 
@@ -115,12 +133,20 @@
 
             <div class="settings">
                 <label>
-                    字體大小:
-                    <input type="range" id="fontSize" min="12" max="100" value="24">
+                    主字幕字體大小:
+                    <input type="range" id="fontSize1" min="12" max="100" value="24">
                 </label>
                 <label>
-                    字體顏色:
-                    <input type="color" id="fontColor" value="#ffffff">
+                    第二軌字幕字體大小:
+                    <input type="range" id="fontSize2" min="12" max="100" value="24">
+                </label>
+                <label>
+                    主字幕字體顏色:
+                    <input type="color" id="fontColor1" value="#ffffff">
+                </label>
+                <label>
+                    第二軌字幕字體顏色:
+                    <input type="color" id="fontColor2" value="#ffffff">
                 </label>
             </div>
         </div>
@@ -128,23 +154,37 @@
 
     <script>
         const audioFileInput = document.getElementById('audioFile');
-        const subtitleFileInput = document.getElementById('subtitleFile');
+        const subtitleFileInput1 = document.getElementById('subtitleFile1');
+        const subtitleFileInput2 = document.getElementById('subtitleFile2');
         const audioPlayer = document.getElementById('audioPlayer');
         const subtitleDisplay = document.getElementById('subtitleDisplay');
-        const fontSizeControl = document.getElementById('fontSize');
-        const fontColorControl = document.getElementById('fontColor');
+        const subtitle1 = document.getElementById('subtitle1');
+        const subtitle2 = document.getElementById('subtitle2');
+        const fontSizeControl1 = document.getElementById('fontSize1');
+        const fontSizeControl2 = document.getElementById('fontSize2');
+        const fontColorControl1 = document.getElementById('fontColor1');
+        const fontColorControl2 = document.getElementById('fontColor2');
         const mainControls = document.getElementById('mainControls');
         const currentTimeDisplay = document.getElementById('currentTime');
 
-        let subtitles = [];
+        let subtitles1 = [];
+        let subtitles2 = [];
         let controlsHidden = false;
 
-        fontSizeControl.addEventListener('input', () => {
-            subtitleDisplay.style.fontSize = `${fontSizeControl.value}px`;
+        fontSizeControl1.addEventListener('input', () => {
+            subtitle1.style.fontSize = `${fontSizeControl1.value}px`;
         });
 
-        fontColorControl.addEventListener('input', () => {
-            subtitleDisplay.style.color = fontColorControl.value;
+        fontSizeControl2.addEventListener('input', () => {
+            subtitle2.style.fontSize = `${fontSizeControl2.value}px`;
+        });
+
+        fontColorControl1.addEventListener('input', () => {
+            subtitle1.style.color = fontColorControl1.value;
+        });
+
+        fontColorControl2.addEventListener('input', () => {
+            subtitle2.style.color = fontColorControl2.value;
         });
 
         audioFileInput.addEventListener('change', (e) => {
@@ -155,17 +195,34 @@
             }
         });
 
-        subtitleFileInput.addEventListener('change', (e) => {
+        subtitleFileInput1.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     try {
-                        subtitles = parseSRT(event.target.result);
+                        subtitles1 = parseSRT(event.target.result);
                     } catch (error) {
-                        alert(`字幕檔案格式錯誤: ${error.message}`);
-                        subtitles = [];
-                        subtitleDisplay.textContent = '字幕將顯示在此處';
+                        alert(`主字幕檔案格式錯誤: ${error.message}`);
+                        subtitles1 = [];
+                        subtitle1.textContent = '';
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        subtitleFileInput2.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        subtitles2 = parseSRT(event.target.result);
+                    } catch (error) {
+                        alert(`第二軌字幕檔案格式錯誤: ${error.message}`);
+                        subtitles2 = [];
+                        subtitle2.textContent = '';
                     }
                 };
                 reader.readAsText(file);
@@ -236,12 +293,19 @@
 
         audioPlayer.addEventListener('timeupdate', () => {
             const currentTime = audioPlayer.currentTime;
-            const currentCue = subtitles.find(cue => currentTime >= cue.start && currentTime <= cue.end);
-            if (currentCue) {
-                subtitleDisplay.textContent = currentCue.text;
+            const currentCue1 = subtitles1.find(cue => currentTime >= cue.start && currentTime <= cue.end);
+            const currentCue2 = subtitles2.find(cue => currentTime >= cue.start && currentTime <= cue.end);
+
+            if (currentCue1 || currentCue2) {
+                subtitleDisplay.style.display = 'flex';
+                subtitle1.textContent = currentCue1 ? currentCue1.text : '';
+                subtitle2.textContent = currentCue2 ? currentCue2.text : '';
             } else {
-                subtitleDisplay.textContent = '';
+                subtitleDisplay.style.display = 'none';
+                subtitle1.textContent = '';
+                subtitle2.textContent = '';
             }
+
             updateCurrentTime();
         });
 
