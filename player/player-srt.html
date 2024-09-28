@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NotebookLM + SRT Player</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 90%;
+            margin: 0 auto;
+        }
+
+        #mainControls {
+            transition: height 0.3s ease, opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        #mainControls.hidden {
+            height: 0px;
+            opacity: 0;
+            visibility: hidden;
+            overflow: hidden;
+            margin-bottom: 0;
+        }
+
+        .controls, .settings {
+            margin-bottom: 20px;
+        }
+
+        .controls label, .settings label {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .subtitle-display {
+            position: relative;
+            width: 100%;
+            min-height: 50px;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            box-sizing: border-box;
+            font-size: 2em;
+            word-wrap: break-word;
+            cursor: pointer;
+        }
+
+        #currentTime {
+            font-size: 1em;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                width: 85%;
+            }
+            .subtitle-display {
+                font-size: 1.5em;
+            }
+        }
+
+        .settings input[type="range"] {
+            width: 100%;
+        }
+
+        .settings input[type="color"] {
+            padding: 5px;
+            width: 100%;
+            max-width: 200px;
+            border: none;
+            height: 40px;
+        }
+
+        .file-inputs input {
+            display: block;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="currentTime">00:00:00.000</div>
+        <div class="subtitle-display" id="subtitleDisplay">
+            字幕將顯示在此處
+        </div>
+        <div id="mainControls">
+            <h1>NotebookLM + SRT Player</h1>
+
+            <div class="controls file-inputs">
+                <label>
+                    上傳音訊檔案:
+                    <input type="file" id="audioFile" accept="audio/*">
+                </label>
+                <label>
+                    上傳字幕檔案 (SRT 格式):
+                    <input type="file" id="subtitleFile" accept=".srt">
+                </label>
+            </div>
+
+            <div class="controls">
+                <audio id="audioPlayer" controls style="width: 100%; max-width: 100%;"></audio>
+            </div>
+
+            <div class="settings">
+                <label>
+                    字體大小:
+                    <input type="range" id="fontSize" min="12" max="100" value="24">
+                </label>
+                <label>
+                    字體顏色:
+                    <input type="color" id="fontColor" value="#ffffff">
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const audioFileInput = document.getElementById('audioFile');
+        const subtitleFileInput = document.getElementById('subtitleFile');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const subtitleDisplay = document.getElementById('subtitleDisplay');
+        const fontSizeControl = document.getElementById('fontSize');
+        const fontColorControl = document.getElementById('fontColor');
+        const mainControls = document.getElementById('mainControls');
+        const currentTimeDisplay = document.getElementById('currentTime');
+
+        let subtitles = [];
+        let controlsHidden = false;
+
+        fontSizeControl.addEventListener('input', () => {
+            subtitleDisplay.style.fontSize = `${fontSizeControl.value}px`;
+        });
+
+        fontColorControl.addEventListener('input', () => {
+            subtitleDisplay.style.color = fontColorControl.value;
+        });
+
+        audioFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                audioPlayer.src = url;
+            }
+        });
+
+        subtitleFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        subtitles = parseSRT(event.target.result);
+                    } catch (error) {
+                        alert(`字幕檔案格式錯誤: ${error.message}`);
+                        subtitles = [];
+                        subtitleDisplay.textContent = '字幕將顯示在此處';
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function parseSRT(data) {
+            const lines = data.replace(/\r/g, '').split('\n');
+            const subtitles = [];
+            let i = 0;
+
+            while (i < lines.length) {
+                if (lines[i].trim() === '') {
+                    i++;
+                    continue;
+                }
+
+                const index = parseInt(lines[i].trim(), 10);
+                if (isNaN(index)) {
+                    throw new Error(`無效的序號在第 ${i + 1} 行`);
+                }
+                i++;
+
+                if (i >= lines.length) {
+                    throw new Error(`時間戳缺失在第 ${i + 1} 行`);
+                }
+
+                const timePattern = /^(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})$/;
+                const match = timePattern.exec(lines[i].trim());
+                if (!match) {
+                    throw new Error(`無效的時間戳格式在第 ${i + 1} 行`);
+                }
+
+                const start = parseTime(match[1], match[2], match[3], match[4]);
+                const end = parseTime(match[5], match[6], match[7], match[8]);
+
+                if (isNaN(start) || isNaN(end)) {
+                    throw new Error(`無效的時間格式在第 ${i + 1} 行`);
+                }
+
+                i++;
+
+                let text = '';
+                while (i < lines.length && lines[i].trim() !== '') {
+                    text += lines[i] + '\n';
+                    i++;
+                }
+                text = text.trim();
+
+                if (!text) {
+                    throw new Error(`缺少字幕文本在第 ${i + 1} 行`);
+                }
+
+                subtitles.push({ start, end, text });
+            }
+
+            return subtitles;
+        }
+
+        function parseTime(hours, minutes, seconds, milliseconds) {
+            return (
+                parseInt(hours, 10) * 3600 +
+                parseInt(minutes, 10) * 60 +
+                parseInt(seconds, 10) +
+                parseInt(milliseconds, 10) / 1000
+            );
+        }
+
+        audioPlayer.addEventListener('timeupdate', () => {
+            const currentTime = audioPlayer.currentTime;
+            const currentCue = subtitles.find(cue => currentTime >= cue.start && currentTime <= cue.end);
+            if (currentCue) {
+                subtitleDisplay.textContent = currentCue.text;
+            } else {
+                subtitleDisplay.textContent = '';
+            }
+            updateCurrentTime();
+        });
+
+        function updateCurrentTime() {
+            const currentTime = audioPlayer.currentTime;
+            const hours = Math.floor(currentTime / 3600);
+            const minutes = Math.floor((currentTime % 3600) / 60);
+            const seconds = Math.floor(currentTime % 60);
+            const milliseconds = Math.floor((currentTime % 1) * 1000);
+            currentTimeDisplay.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(milliseconds, 3)}`;
+        }
+
+        function pad(num, size = 2) {
+            let s = num + "";
+            while (s.length < size) s = "0" + s;
+            return s;
+        }
+
+        subtitleDisplay.addEventListener('click', () => {
+            controlsHidden = !controlsHidden;
+            if (controlsHidden) {
+                mainControls.classList.add('hidden');
+            } else {
+                mainControls.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
