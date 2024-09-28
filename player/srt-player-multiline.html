@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -79,13 +80,14 @@
         }
 
         #fullscreenBtn {
-            font-size: 0.8em;
+            font-size: 1em;
             color: #888;
             cursor: pointer;
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 10px;
+            right: 10px;
             user-select: none;
+            padding: 5px;
         }
 
         @media (max-width: 600px) {
@@ -97,6 +99,9 @@
             }
             .subtitle-display .subtitle-prev, .subtitle-display .subtitle-next {
                 font-size: 0.6em;
+            }
+            #fullscreenBtn {
+                font-size: 0.9em;
             }
         }
 
@@ -282,7 +287,9 @@
             );
         }
 
-        audioPlayer.addEventListener('timeupdate', () => {
+        audioPlayer.addEventListener('timeupdate',
+
+ () => {
             const currentTime = audioPlayer.currentTime;
             const currentIndex = subtitles.findIndex(cue => currentTime >= cue.start && currentTime <= cue.end);
             let displaySubtitle = false;
