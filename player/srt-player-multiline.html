@@ -12,11 +12,13 @@
             margin: 0;
             padding: 20px;
             box-sizing: border-box;
+            position: relative;
         }
 
         .container {
             width: 90%;
             margin: 0 auto;
+            position: relative;
         }
 
         #mainControls {
@@ -54,7 +56,7 @@
             cursor: pointer;
         }
 
-        .subtitle-display .subtitle-prev {
+        .subtitle-display .subtitle-prev, .subtitle-display .subtitle-next {
             color: #888;
             font-size: 0.7em;
             width: 100%;
@@ -73,6 +75,17 @@
             font-size: 0.8em;
             margin-bottom: 10px;
             text-align: left;
+            display: inline-block;
+        }
+
+        #fullscreenBtn {
+            font-size: 0.8em;
+            color: #888;
+            cursor: pointer;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            user-select: none;
         }
 
         @media (max-width: 600px) {
@@ -82,7 +95,7 @@
             .subtitle-display .subtitle-current {
                 font-size: 1.2em;
             }
-            .subtitle-display .subtitle-prev {
+            .subtitle-display .subtitle-prev, .subtitle-display .subtitle-next {
                 font-size: 0.6em;
             }
         }
@@ -108,9 +121,11 @@
 <body>
     <div class="container">
         <div id="currentTime">00:00:00.000</div>
+        <div id="fullscreenBtn">FULL</div>
         <div class="subtitle-display" id="subtitleDisplay">
             <div class="subtitle-prev" id="subtitlePrev"></div>
             <div class="subtitle-current" id="subtitleCurrent"></div>
+            <div class="subtitle-next" id="subtitleNext"></div>
         </div>
         <div id="mainControls">
             <h1>NotebookLM + SRT Player</h1>
@@ -150,10 +165,12 @@
         const subtitleDisplay = document.getElementById('subtitleDisplay');
         const subtitlePrev = document.getElementById('subtitlePrev');
         const subtitleCurrent = document.getElementById('subtitleCurrent');
+        const subtitleNext = document.getElementById('subtitleNext');
         const fontSizeControl = document.getElementById('fontSize');
         const fontColorControl = document.getElementById('fontColor');
         const mainControls = document.getElementById('mainControls');
         const currentTimeDisplay = document.getElementById('currentTime');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
 
         let subtitles = [];
         let lastSubtitleIndex = -1;
@@ -162,6 +179,7 @@
         fontSizeControl.addEventListener('input', () => {
             subtitleCurrent.style.fontSize = `${fontSizeControl.value}px`;
             subtitlePrev.style.fontSize = `${Math.max(8, fontSizeControl.value * 0.5)}px`;
+            subtitleNext.style.fontSize = `${Math.max(8, fontSizeControl.value * 0.5)}px`;
         });
 
         fontColorControl.addEventListener('input', () => {
@@ -187,6 +205,7 @@
                         subtitleDisplay.style.display = 'none';
                         subtitlePrev.textContent = '';
                         subtitleCurrent.textContent = '';
+                        subtitleNext.textContent = '';
                     } catch (error) {
                         alert(`字幕檔案格式錯誤: ${error.message}`);
                         subtitles = [];
@@ -194,6 +213,7 @@
                         subtitleDisplay.style.display = 'none';
                         subtitlePrev.textContent = '';
                         subtitleCurrent.textContent = '';
+                        subtitleNext.textContent = '';
                     }
                 };
                 reader.readAsText(file);
@@ -271,17 +291,20 @@
                 subtitleDisplay.style.display = 'flex';
                 subtitlePrev.textContent = currentIndex > 0 ? subtitles[currentIndex - 1].text : '';
                 subtitleCurrent.textContent = subtitles[currentIndex].text;
+                subtitleNext.textContent = currentIndex < subtitles.length - 1 ? subtitles[currentIndex + 1].text : '';
                 lastSubtitleIndex = currentIndex;
                 displaySubtitle = true;
             } else if (lastSubtitleIndex !== -1 && currentTime > subtitles[lastSubtitleIndex].end) {
                 subtitleDisplay.style.display = 'flex';
-                subtitlePrev.textContent = subtitles[lastSubtitleIndex > 0 ? lastSubtitleIndex - 1 : 0].text;
+                subtitlePrev.textContent = lastSubtitleIndex > 0 ? subtitles[lastSubtitleIndex - 1].text : '';
                 subtitleCurrent.textContent = subtitles[lastSubtitleIndex].text;
+                subtitleNext.textContent = '';
                 displaySubtitle = true;
             } else {
                 subtitleDisplay.style.display = 'none';
                 subtitlePrev.textContent = '';
                 subtitleCurrent.textContent = '';
+                subtitleNext.textContent = '';
             }
 
             updateCurrentTime();
@@ -304,7 +327,7 @@
 
         audioPlayer.addEventListener('play', () => {
             if (subtitles.length > 0) {
-                // Do nothing, subtitleDisplay will be managed by timeupdate
+                // Subtitle display will be managed by timeupdate
             }
         });
 
@@ -314,6 +337,18 @@
                 mainControls.classList.add('hidden');
             } else {
                 mainControls.classList.remove('hidden');
+            }
+        });
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                fullscreenBtn.style.color = '#fff';
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                    fullscreenBtn.style.color = '#888';
+                }
             }
         });
     </script>
