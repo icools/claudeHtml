@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Character Animation</title>
+    <title>3D Character Animation with Subtitles</title>
     <style>
         /* Reset default margins and paddings */
         * {
@@ -19,6 +19,38 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            height: 100vh;
+        }
+
+        /* Top bar styles */
+        .top-bar {
+            width: 100%;
+            padding: 10px;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        .top-bar input[type="file"] {
+            display: none;
+        }
+
+        .top-bar label {
+            background-color: #333;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .top-bar label:hover {
+            background-color: #555;
         }
 
         /* Canvas styles */
@@ -26,35 +58,31 @@
             display: block; /* Removes any unwanted gaps */
             width: 100%;
             height: 80vh;
-        }
-
-        /* Upload buttons styles */
-        .upload-container {
-            margin-top: 10px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .upload-container input {
-            background-color: #333;
-            color: #fff;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
+            margin-top: 60px; /* To prevent overlap with top bar */
         }
 
         /* Audio player styles */
         .audio-player {
             margin-top: 20px;
+            z-index: 10;
+        }
+
+        .audio-player audio {
+            width: 300px;
         }
     </style>
 </head>
 <body>
-    <!-- Upload buttons -->
-    <div class="upload-container">
-        <input type="file" id="uploadWav" accept=".wav">
-        <input type="file" id="uploadSrt" accept=".srt">
+    <!-- Top bar with upload buttons -->
+    <div class="top-bar">
+        <div>
+            <input type="file" id="uploadWav" accept=".wav">
+            <label for="uploadWav">上傳 WAV</label>
+        </div>
+        <div>
+            <input type="file" id="uploadSrt" accept=".srt">
+            <label for="uploadSrt">上傳 SRT</label>
+        </div>
     </div>
 
     <!-- Canvas -->
@@ -62,7 +90,7 @@
 
     <!-- Audio player -->
     <div class="audio-player">
-        <audio controls id="audioPlayer" style="width: 300px;">
+        <audio controls id="audioPlayer">
             <source src="" type="audio/wav">
             Your browser does not support the audio element.
         </audio>
@@ -72,7 +100,7 @@
         window.onload = () => {
             const CANVAS = document.getElementsByTagName("canvas")[0];
             const CTX = CANVAS.getContext("2d");
-            const CHARS = [];
+            let CHARS = [];
             const MAX_CHARS = 200;
             const SEPARATION = 1;
 
@@ -175,6 +203,7 @@
             }
 
             function createChars() {
+                CHARS = []; // Clear existing chars
                 for (let i = 0; i < MAX_CHARS; i++) {
                     const CHARACTER = String.fromCharCode(Math.floor(Math.random() * 93) + 34);
                     const X = signedRandom() * SEPARATION;
@@ -187,19 +216,20 @@
             }
 
             function createCharsByQueryString(str) {
-              const strLength = str.length;
+                CHARS = []; // Clear existing chars
+                const strLength = str.length;
 
-              for (let i = 0; i < MAX_CHARS; i++) {
-                  // 從指定的字串中隨機選取一個字元
-                  const CHARACTER = str[i % strLength];  // 循環顯示 "GPT"
-                  const X = signedRandom() * SEPARATION;
-                  const Y = signedRandom() * SEPARATION;
-                  const Z = signedRandom() * SEPARATION;
-                  const POS = new Vector(X, Y, Z);
-                  const CHAR = new Char(CHARACTER, POS);
-                  CHARS.push(CHAR);
-              }
-          }
+                for (let i = 0; i < MAX_CHARS; i++) {
+                    // 從指定的字串中循環選取字元
+                    const CHARACTER = str[i % strLength];
+                    const X = signedRandom() * SEPARATION;
+                    const Y = signedRandom() * SEPARATION;
+                    const Z = signedRandom() * SEPARATION;
+                    const POS = new Vector(X, Y, Z);
+                    const CHAR = new Char(CHARACTER, POS);
+                    CHARS.push(CHAR);
+                }
+            }
 
             function setDim() {
                 ww = window.innerWidth;
@@ -227,16 +257,79 @@
                 }
             });
 
+            // Subtitle handling
+            let subtitles = [];
+            let currentSubtitleIndex = -1;
+
+            document.getElementById('uploadSrt').addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (file && file.name.endsWith('.srt')) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const srtText = event.target.result;
+                        subtitles = parseSRT(srtText);
+                        console.log(subtitles);
+                    };
+                    reader.readAsText(file);
+                } else {
+                    alert('請上傳有效的 .srt 文件。');
+                }
+            });
+
+            function parseSRT(data) {
+                const pattern = /(\d+)\s+(\d{2}:\d{2}:\d{2},\d{3})\s-->\s(\d{2}:\d{2}:\d{2},\d{3})\s+([\s\S]*?)(?=\n{2,}|$)/g;
+                let result;
+                const subtitles = [];
+
+                while ((result = pattern.exec(data)) !== null) {
+                    const index = parseInt(result[1]);
+                    const start = timeStringToSeconds(result[2]);
+                    const end = timeStringToSeconds(result[3]);
+                    const text = result[4].replace(/\n/g, ' ').trim();
+                    subtitles.push({ index, start, end, text });
+                }
+
+                return subtitles;
+            }
+
+            function timeStringToSeconds(timeString) {
+                const parts = timeString.split(':');
+                const secondsParts = parts[2].split(',');
+                const hours = parseInt(parts[0]);
+                const minutes = parseInt(parts[1]);
+                const seconds = parseInt(secondsParts[0]);
+                const milliseconds = parseInt(secondsParts[1]);
+                return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
+            }
+
+            // Update 3D chars based on current subtitle
+            const audioPlayer = document.getElementById('audioPlayer');
+            audioPlayer.addEventListener('timeupdate', function() {
+                const currentTime = audioPlayer.currentTime;
+                let subtitle = null;
+
+                for (let i = 0; i < subtitles.length; i++) {
+                    if (currentTime >= subtitles[i].start && currentTime <= subtitles[i].end) {
+                        subtitle = subtitles[i].text;
+                        if (currentSubtitleIndex !== i) {
+                            currentSubtitleIndex = i;
+                            createCharsByQueryString(subtitle);
+                        }
+                        break;
+                    }
+                }
+
+                // If no subtitle is active
+                if (!subtitle && currentSubtitleIndex !== -1) {
+                    currentSubtitleIndex = -1;
+                    createChars(); // Optionally reset to random chars
+                }
+            });
+
             (function init() {
                 setDim();
                 initCamera();
-                const params = new URLSearchParams(window.location.search);
-                const text = params.get('text');
-                if (text) {
-                  createCharsByQueryString(text);
-                } else {
-                  createChars();
-                }
+                createChars();
                 loop();
             })();
         };
