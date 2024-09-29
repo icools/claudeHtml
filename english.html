@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>英语学习网页</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        #subtitleList li {
+            cursor: pointer;
+            margin-bottom: 5px;
+        }
+        #subtitleList li:hover {
+            color: blue;
+            text-decoration: underline;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        .controls button {
+            margin-right: 10px;
+        }
+        #audioPlayer {
+            width: 100%;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>英语学习网页</h1>
+    <!-- 文件上传部分 -->
+    <div>
+        <h2>上传文件</h2>
+        <input type="file" id="audioFile" accept="audio/*">
+        <input type="file" id="srtFile" accept=".srt">
+        <button onclick="loadFiles()">加载文件</button>
+    </div>
+    <!-- 字幕显示与控制 -->
+    <div>
+        <h2>字幕列表</h2>
+        <ul id="subtitleList">
+            <!-- 字幕内容将被加载到这里 -->
+        </ul>
+    </div>
+    <!-- 音频控制 -->
+    <div class="controls">
+        <button onclick="setLoop()">设置A-B段循环</button>
+        <button onclick="cancelLoop()">取消循环</button>
+    </div>
+    <audio id="audioPlayer" controls></audio>
+    <script>
+        // JavaScript代码
+        let subtitles = [];
+        let audioPlayer = document.getElementById('audioPlayer');
+        let subtitleList = document.getElementById('subtitleList');
+        let loopStart = null;
+        let loopEnd = null;
+
+        function loadFiles() {
+            let audioFile = document.getElementById('audioFile').files[0];
+            let srtFile = document.getElementById('srtFile').files[0];
+
+            if (audioFile) {
+                audioPlayer.src = URL.createObjectURL(audioFile);
+            }
+
+            if (srtFile) {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    parseSRT(e.target.result);
+                    displaySubtitles();
+                };
+                reader.readAsText(srtFile);
+            }
+        }
+
+        function parseSRT(data) {
+            // 简单的SRT解析器
+            subtitles = [];
+            let srtArray = data.split('\n\n');
+            srtArray.forEach(function(srtItem) {
+                let lines = srtItem.split('\n');
+                if (lines.length >= 3) {
+                    let time = lines[1].split(' --> ');
+                    subtitles.push({
+                        start: timeToSeconds(time[0]),
+                        end: timeToSeconds(time[1]),
+                        text: lines.slice(2).join('\n')
+                    });
+                }
+            });
+        }
+
+        function displaySubtitles() {
+            subtitleList.innerHTML = '';
+            subtitles.forEach(function(subtitle, index) {
+                let li = document.createElement('li');
+                li.textContent = subtitle.text;
+                li.onclick = function() {
+                    audioPlayer.currentTime = subtitle.start;
+                };
+                subtitleList.appendChild(li);
+            });
+        }
+
+        function timeToSeconds(time) {
+            let parts = time.split(':');
+            let seconds = parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2].replace(',', '.'));
+            return seconds;
+        }
+
+        function setLoop() {
+            let start = prompt('请输入A点时间（秒）:');
+            let end = prompt('请输入B点时间（秒）:');
+            if (start !== null && end !== null) {
+                loopStart = parseFloat(start);
+                loopEnd = parseFloat(end);
+            }
+        }
+
+        function cancelLoop() {
+            loopStart = null;
+            loopEnd = null;
+        }
+
+        audioPlayer.addEventListener('timeupdate', function() {
+            if (loopEnd !== null && audioPlayer.currentTime >= loopEnd) {
+                audioPlayer.currentTime = loopStart !== null ? loopStart : 0;
+                audioPlayer.play();
+            }
+        });
+    </script>
+</body>
+</html>
