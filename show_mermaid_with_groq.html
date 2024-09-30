@@ -12,7 +12,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             background-color: #f0f0f0;
         }
@@ -21,7 +21,7 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            width: 80%;
+            width: 90%;
             max-width: 600px;
         }
         input[type="text"], input[type="password"] {
@@ -38,35 +38,57 @@
             border-radius: 4px;
             cursor: pointer;
         }
+        button:hover {
+            background-color: #0056b3;
+        }
         #result {
             margin-top: 20px;
             width: 100%;
             overflow: auto;
         }
+        .error {
+            color: red;
+        }
+        .mermaid {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <input type="password" id="apiKey" placeholder="輸入你的Groq API Key">
+        <h2>Mind Map Generator</h2>
+        <input type="password" id="apiKey" placeholder="輸入你的 Groq API Key">
         <input type="text" id="input" placeholder="輸入你的需求">
         <button onclick="generateMindMap()">送出</button>
         <div id="result"></div>
     </div>
 
     <script>
+        // 初始化 Mermaid.js
+        mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+        // 頁面載入時自動填入已儲存的 API Key
+        window.onload = function() {
+            const storedApiKey = localStorage.getItem('apiKey');
+            if (storedApiKey) {
+                document.getElementById('apiKey').value = storedApiKey;
+            }
+        };
+
         async function generateMindMap() {
             const apiKey = document.getElementById('apiKey').value.trim();
             const input = document.getElementById('input').value.trim();
             const resultDiv = document.getElementById('result');
             resultDiv.innerHTML = 'Loading...';
 
+            // 驗證 API Key 和用戶輸入
             if (!apiKey) {
-                resultDiv.innerHTML = '請輸入 API Key。';
+                resultDiv.innerHTML = '<p class="error">請輸入 API Key。</p>';
                 return;
             }
 
             if (!input) {
-                resultDiv.innerHTML = '請輸入需求。';
+                resultDiv.innerHTML = '<p class="error">請輸入需求。</p>';
                 return;
             }
 
@@ -105,6 +127,9 @@
                 const content = data.choices[0].message.content;
                 console.log('Response:', content);
 
+                // 儲存 API Key 到 localStorage
+                localStorage.setItem('apiKey', apiKey);
+
                 // 提取 <mermaid> 區塊中的內容
                 const mermaidMatch = content.match(/<mermaid>([\s\S]*?)<\/mermaid>/i);
                 if (mermaidMatch && mermaidMatch[1]) {
@@ -112,36 +137,55 @@
                     console.log('Original Mermaid Code:', mermaidCode);
 
                     // 預處理：替換可能的非標準箭頭符號
-                    mermaidCode = mermaidCode
-                        .replace(/〈-/g, '-->')      // 替換可能的全形箭頭
-                        .replace(/〈-/g, '-->')      // 重複替換確保所有情況
-                        .replace(/〈/g, '<')          // 替換其他全形符號
-                        .replace(/〉/g, '>')          // 替換其他全形符號
-                        .replace(/–-/g, '--')        // 替換其他類似符號
-                        .replace(/--〉/g, '-->')      // 替換特定的箭頭
-                        .replace(/—>/g, '-->')        // 替換長破折號
-                        .replace(/--->/g, '-->')      // 替換更長的箭頭
-                        .replace(/→/g, '-->')          // 替換右箭頭符號
-                        .replace(/←/g, '<--')          // 替換左箭頭符號
-                        .replace(/↔/g, '<-->');        // 替換雙向箭頭符號
-
+                    mermaidCode = sanitizeMermaidCode(mermaidCode);
                     console.log('Sanitized Mermaid Code:', mermaidCode);
 
-                    // 使用 Mermaid.js 生成圖表
+                    // 插入 Mermaid 圖表
                     resultDiv.innerHTML = '<div class="mermaid">' + mermaidCode + '</div>';
-                    mermaid.contentLoaded(); // 更新為最新的初始化方法
+
+                    // 渲染 Mermaid 圖表
+                    try {
+                        mermaid.init(undefined, resultDiv.querySelectorAll('.mermaid'));
+                    } catch (renderError) {
+                        console.error('Mermaid render error:', renderError);
+                        displayDefaultDiagram(resultDiv);
+                    }
                 } else {
                     console.log('Response does not contain valid Mermaid syntax.');
-                    resultDiv.innerHTML = '回應中未找到有效的 Mermaid 語法。';
+                    resultDiv.innerHTML = '<p class="error">回應中未找到有效的 Mermaid 語法，將顯示預設圖表。</p>';
+                    displayDefaultDiagram(resultDiv);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                resultDiv.innerHTML = '生成心智圖時出現錯誤，請稍後再試。';
+                resultDiv.innerHTML = '<p class="error">生成心智圖時出現錯誤，將顯示預設圖表。</p>';
+                displayDefaultDiagram(resultDiv);
             }
         }
 
-        // 初始化 Mermaid
-        mermaid.initialize({ startOnLoad: true });
+        // 預處理 Mermaid 語法，替換非標準符號
+        function sanitizeMermaidCode(code) {
+            return code
+                .replace(/〈-/g, '-->')
+                .replace(/〈/g, '<')
+                .replace(/〉/g, '>')
+                .replace(/–-/g, '--')
+                .replace(/--〉/g, '-->')
+                .replace(/—>/g, '-->')
+                .replace(/--->/g, '-->')
+                .replace(/→/g, '-->')
+                .replace(/←/g, '<--')
+                .replace(/↔/g, '<-->');
+        }
+
+        // 顯示預設圖表
+        function displayDefaultDiagram(container) {
+            const defaultMermaidCode = `
+                graph LR
+                進門-->划手機-->躺著-->洗澡-->睡覺
+            `;
+            container.innerHTML += '<div class="mermaid">' + defaultMermaidCode + '</div>';
+            mermaid.init(undefined, container.querySelectorAll('.mermaid'));
+        }
     </script>
 </body>
 </html>
