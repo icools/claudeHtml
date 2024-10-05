@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>等待輸入動畫效果</title>
+    <style>
+        /* 全局樣式 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: #F5F5DC; /* 淺米黃色背景 */
+            font-family: Arial, sans-serif;
+            overflow: hidden; /* 防止滾動條出現 */
+            position: relative;
+        }
+
+        /* 取消按鈕 */
+        .cancel-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            background-color: #4CAF50; /* 深綠色背景 */
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background-color 0.3s;
+        }
+
+        .cancel-button:hover {
+            background-color: #388E3C;
+        }
+
+        /* 更多選項按鈕 */
+        .more-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background-color: #4CAF50; /* 深綠色背景 */
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background-color 0.3s;
+        }
+
+        .more-button:hover {
+            background-color: #388E3C;
+        }
+
+        /* 中央文字 */
+        .central-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #A9A9A9; /* 淺灰色 */
+            font-size: 24px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* 浮動動畫 */
+        @keyframes float {
+            0% {
+                transform: translate(-50%, -50%) translateY(0);
+            }
+            50% {
+                transform: translate(-50%, -50%) translateY(-10px);
+            }
+            100% {
+                transform: translate(-50%, -50%) translateY(0);
+            }
+        }
+
+        /* 波浪容器 */
+        .waves {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 300px; /* 增加波浪容器高度 */
+            overflow: hidden;
+            line-height: 0;
+        }
+
+        /* 單個波浪 */
+        .wave {
+            position: absolute;
+            bottom: 0;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(to top, #4CAF50, #A8D5BA);
+            opacity: 0.6; /* 增加不透明度使波浪更明顯 */
+            border-radius: 1000px 50% 50% 1000px;
+            animation: waveAnimation 6s infinite linear;
+        }
+
+        /* 多層波浪以增加深度 */
+        .wave:nth-child(1) {
+            opacity: 0.6;
+            animation-duration: 4s;
+            bottom: 0;
+        }
+
+        .wave:nth-child(2) {
+            opacity: 0.4;
+            animation-duration: 5s;
+            bottom: 10px;
+            animation-delay: -2s;
+        }
+
+        .wave:nth-child(3) {
+            opacity: 0.3;
+            animation-duration: 6s;
+            bottom: 20px;
+            animation-delay: -4s;
+        }
+
+        /* 波浪動畫 */
+        @keyframes waveAnimation {
+            0% {
+                transform: translateX(0) translateY(0);
+            }
+            50% {
+                transform: translateX(-25%) translateY(20px); /* 增加振幅 */
+            }
+            100% {
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 取消按鈕 -->
+    <button class="cancel-button" onclick="window.close();">×</button>
+
+    <!-- 更多選項按鈕 -->
+    <button class="more-button">⋮</button>
+
+    <!-- 中央文字 -->
+    <div class="central-text">Pi is listening</div>
+
+    <!-- 波浪效果 -->
+    <div class="waves">
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+    </div>
+
+    <!-- 音頻分析腳本 -->
+    <script>
+        // 確保瀏覽器支持必要的 API
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            // 設置音頻上下文
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            // 獲取波浪元素
+            const waves = document.querySelectorAll('.wave');
+
+            // 獲取麥克風音頻
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    const source = audioContext.createMediaStreamSource(stream);
+                    source.connect(analyser);
+                    visualize();
+                })
+                .catch(err => {
+                    console.error('無法訪問麥克風: ', err);
+                    alert('無法訪問麥克風，請允許麥克風訪問以啟用動畫效果。');
+                });
+
+            function visualize() {
+                function updateWaveAnimations() {
+                    analyser.getByteFrequencyData(dataArray);
+                    let sum = 0;
+                    for (let i = 0; i < bufferLength; i++) {
+                        sum += dataArray[i];
+                    }
+                    const average = sum / bufferLength;
+
+                    // 根據音量調整波浪的振幅
+                    const volume = average / 255; // 正規化到 0-1
+
+                    // 設置最大振幅，避免過度擴展
+                    const maxTranslateY = 40; // 增加最大振幅
+                    const newTranslateY = Math.min(maxTranslateY * volume, 40); // 確保不超過最大值
+
+                    waves.forEach((wave, index) => {
+                        // 調整波浪的垂直位移
+                        wave.style.transform = `translateX(0) translateY(${newTranslateY}px)`;
+                        
+                        // 調整波浪的透明度基於音量
+                        const baseOpacity = [0.6, 0.4, 0.3];
+                        wave.style.opacity = baseOpacity[index] + (0.4 * volume);
+                    });
+
+                    requestAnimationFrame(updateWaveAnimations);
+                }
+
+                updateWaveAnimations();
+            }
+        } else {
+            alert('您的瀏覽器不支持麥克風訪問，無法啟用動畫效果。');
+        }
+    </script>
+
+</body>
+</html>
