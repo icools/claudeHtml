@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>持續流動的波浪動畫效果與漂浮文字</title>
+    <style>
+        /* 全局樣式保持不變 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: #F5F5DC;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 取消按鈕和更多選項按鈕樣式保持不變 */
+        .cancel-button, .more-button {
+            position: fixed;
+            top: 20px;
+            width: 40px;
+            height: 40px;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background-color 0.3s;
+        }
+
+        .cancel-button { left: 20px; }
+        .more-button { right: 20px; }
+
+        .cancel-button:hover, .more-button:hover {
+            background-color: #388E3C;
+        }
+
+        /* 更新中央文字樣式，添加漂浮動畫 */
+        .central-text {
+            position: absolute;
+            top: 64px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #4CAF50;
+            font-size: 24px;
+            padding: 10px 20px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 20px;
+            z-index: 5;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-10px); }
+        }
+
+        /* 波浪容器樣式保持不變 */
+        .waves {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 70%;
+            overflow: hidden;
+        }
+
+        /* 單個波浪樣式保持不變 */
+        .wave {
+            position: absolute;
+            bottom: 0;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(to top, #4CAF50, #A8D5BA);
+            opacity: 0.8;
+            border-radius: 1000% 1000% 0 0;
+        }
+
+        /* 多層波浪動畫保持不變 */
+        .wave:nth-child(1) { bottom: -10%; animation: wave 21s linear infinite; }
+        .wave:nth-child(2) { bottom: -20%; animation: wave 19s linear infinite reverse; opacity: 0.6; }
+        .wave:nth-child(3) { bottom: -30%; animation: wave 17s linear infinite; opacity: 0.4; }
+
+        @keyframes wave {
+            0% { transform: translateX(0) translateY(0) rotate(0deg); }
+            50% { transform: translateX(-25%) translateY(10px) rotate(10deg); }
+            100% { transform: translateX(-50%) translateY(0) rotate(0deg); }
+        }
+
+        /* 模擬麥克風輸入按鈕樣式保持不變 */
+        #simulateInput {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        #simulateInput:hover {
+            background-color: #388E3C;
+        }
+    </style>
+</head>
+<body>
+    <button class="cancel-button" onclick="window.close();">&times;</button>
+    <button class="more-button">&vellip;</button>
+    <div class="central-text">Pi is listening</div>
+    <div class="waves">
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+    </div>
+    <button id="simulateInput">模擬麥克風輸入</button>
+
+    <script>
+        // JavaScript 代碼保持不變
+        const waves = document.querySelectorAll('.wave');
+        let isSimulating = false;
+        let animationFrameId;
+
+        function easeInOutQuad(t) {
+            return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        }
+
+        function simulateWaveMovement(timestamp) {
+            if (!isSimulating) return;
+
+            waves.forEach((wave, index) => {
+                const baseAmplitude = 10 + index * 5;
+                const frequency = 0.001 + index * 0.0005;
+                const phase = index * Math.PI / 3;
+
+                const amplitude = baseAmplitude + Math.sin(timestamp * frequency + phase) * 20;
+                const easedAmplitude = easeInOutQuad(Math.abs(Math.sin(timestamp * frequency * 0.5))) * amplitude;
+
+                wave.style.transform = `translateX(-25%) translateY(${-easedAmplitude}px) rotate(${amplitude * 0.1}deg)`;
+                wave.style.opacity = 0.4 + (0.2 * Math.abs(Math.sin(timestamp * frequency)));
+            });
+
+            animationFrameId = requestAnimationFrame(simulateWaveMovement);
+        }
+
+        document.getElementById('simulateInput').addEventListener('click', function() {
+            isSimulating = !isSimulating;
+            this.textContent = isSimulating ? '停止模擬' : '模擬麥克風輸入';
+            if (isSimulating) {
+                simulateWaveMovement();
+            } else {
+                cancelAnimationFrame(animationFrameId);
+                waves.forEach(wave => {
+                    wave.style.transform = '';
+                    wave.style.opacity = '';
+                });
+            }
+        });
+
+        waves.forEach((wave, index) => {
+            wave.style.animationDelay = `-${index * 2}s`;
+        });
+    </script>
+</body>
+</html>
