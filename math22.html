@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Custom p5.js Sketch</title>
+  <!-- Include the p5.js library from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+</head>
+<body>
+  <script>
+    let t = 0;
+
+    function setup() {
+      // Create a 400x400 pixel canvas
+      createCanvas(400, 400);
+      // Set stroke color with transparency
+      stroke(255, 96);
+      // Optionally, disable looping if you want to capture a single frame
+      // noLoop();
+    }
+
+    function draw() {
+      // Set background color
+      background(6);
+      
+      // Increment time variable
+      t += PI / 90;
+
+      // Loop through y from 99 to 299 with step 2
+      for (let y = 99; y < 300; y += 2) {
+        // Loop through x from 100 to 299 with step 1
+        for (let x = 100; x < 300; x++) {
+          // Calculate the new coordinates
+          let coords = calculateCoordinates(x, y);
+          // Draw a point at the calculated coordinates
+          point(coords[0], coords[1]);
+        }
+      }
+    }
+
+    // Function to calculate new (x, y) coordinates
+    function calculateCoordinates(x, y) {
+      // Calculate intermediate variables
+      let k = x / 8 - 25;
+      let e = y / 8 - 25;
+      let magnitude = sqrt(k * k + e * e);
+      let o = magnitude / (4 + sin((k * e) / 49 - t));
+      let d = cos(o);
+      let q = (k / cos(e)) * sin(d * 9) + x / 3;
+      let c = o + t / 8;
+      let newX = q * cos(c) + 200;
+      let newY = ((y / 2 + q) / 2) * sin(c) + 200;
+      
+      return [newX, newY];
+    }
+  </script>
+</body>
+</html>
