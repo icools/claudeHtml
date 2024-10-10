@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Word Cloud Generator</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-cloud/1.2.5/d3.layout.cloud.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(120deg, #000000, #2c3e50);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #wordCloud {
+            width: 100%;
+            height: 400px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .error {
+            color: #e74c3c;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dynamic Word Cloud Generator</h1>
+        <input type="password" id="apiKey" placeholder="Enter your GROQ API Key" />
+        <textarea id="question" rows="4" placeholder="Enter your question"></textarea>
+        <button onclick="generateWordCloud()">Generate Word Cloud</button>
+        <div id="error" class="error"></div>
+        <div id="wordCloud"></div>
+    </div>
+
+    <script>
+        async function generateWordCloud() {
+            const apiKey = document.getElementById('apiKey').value;
+            const question = document.getElementById('question').value;
+            const errorElement = document.getElementById('error');
+            const wordCloudElement = document.getElementById('wordCloud');
+
+            if (!apiKey || !question) {
+                errorElement.textContent = 'Please provide both API key and question.';
+                return;
+            }
+
+            errorElement.textContent = '';
+            wordCloudElement.innerHTML = 'Generating...';
+
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: "gemma2-9b-it",
+                        messages: [
+                            {
+                                role: "system",
+                                content: "You are a helpful assistant that generates a list of relevant words for word cloud visualization."
+                            },
+                            {
+                                role: "user",
+                                content: `Generate a list of 30 relevant words for a word cloud based on this question: "${question}". Provide the words as a comma-separated list without explanations or additional text.`
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 256,
+                        top_p: 1,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const content = data.choices[0].message.content;
+                const wordList = content.split(',').map(word => word.trim());
+
+                const words = wordList.map(word => ({
+                    text: word,
+                    size: 10 + Math.random() * 90
+                }));
+
+                createWordCloud(words);
+            } catch (error) {
+                errorElement.textContent = `Error: ${error.message}`;
+                wordCloudElement.innerHTML = '';
+            }
+        }
+
+        function createWordCloud(words) {
+            const width = document.getElementById('wordCloud').offsetWidth;
+            const height = 400;
+
+            d3.select("#wordCloud").selectAll("*").remove();
+
+            const layout = d3.layout.cloud()
+                .size([width, height])
+                .words(words)
+                .padding(5)
+                .rotate(() => (~~(Math.random() * 6) - 3) * 30)
+                .font("Impact")
+                .fontSize(d => d.size)
+                .on("end", draw);
+
+            layout.start();
+
+            function draw(words) {
+                const color = d3.scaleLinear()
+                    .domain([0, words.length])
+                    .range(["#00ffff", "#ff00ff"]);
+
+                d3.select("#wordCloud").append("svg")
+                    .attr("width", layout.size()[0])
+                    .attr("height", layout.size()[1])
+                    .append("g")
+                    .attr("transform", `translate(${layout.size()[0] / 2},${layout.size()[1] / 2})`)
+                    .selectAll("text")
+                    .data(words)
+                    .enter().append("text")
+                    .style("font-size", d => `${d.size}px`)
+                    .style("font-family", "Impact")
+                    .style("fill", (d, i) => color(i))
+                    .attr("text-anchor", "middle")
+                    .attr("transform", d => `translate(${d.x},${d.y}) rotate(${d.rotate})`)
+                    .text(d => d.text)
+                    .on("mouseover", function() {
+                        d3.select(this)
+                            .transition()
+                            .duration(300)
+                            .style("font-size", d => `${d.size * 1.2}px`)
+                            .style("fill", "#ffffff");
+                    })
+                    .on("mouseout", function(d, i) {
+                        d3.select(this)
+                            .transition()
+                            .duration(300)
+                            .style("font-size", d => `${d.size}px`)
+                            .style("fill", color(i));
+                    });
+            }
+        }
+    </script>
+</body>
+</html>
