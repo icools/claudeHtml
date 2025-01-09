@@ -5,36 +5,56 @@
     <title>Receiver</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
     <style>
       html, body {
-        background-color: #000;
         margin: 0;
         padding: 0;
         height: 100vh;
         width: 100vw;
         overflow: hidden;
-      }
-      body {
-        color: #fff;
+        background: #000;
         font-family: Arial, sans-serif;
+      }
+
+      #canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+
+      .content {
+        position: relative;
+        z-index: 2;
         padding: 20px;
       }
+
       h1 {
         color: #ffffff;
         font-size: 32px;
         margin-bottom: 20px;
       }
+
       #messageDisplay {
         font-size: 24px;
         margin-top: 20px;
         color: #ffffff;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 20px;
+        border-radius: 10px;
       }
+
       .message-container {
         margin: 10px 0;
         padding: 10px;
-        border: 1px solid #444;
+        border: 1px solid rgba(255, 255, 255, 0.3);
         border-radius: 4px;
+        background: rgba(0, 0, 0, 0.3);
       }
+
       .message-type {
         color: #4285f4;
         font-size: 16px;
@@ -43,14 +63,82 @@
     </style>
   </head>
   <body>
-    <h1>Receiver Page</h1>
-    <div id="messageDisplay">No messages yet.</div>
+    <canvas id="canvas"></canvas>
+    <div class="content">
+      <h1>Receiver Page</h1>
+      <div id="messageDisplay">No messages yet.</div>
+    </div>
     
     <script>
+      // LED背景動畫相關代碼
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const simplex = new SimplexNoise();
+
+      let width, height;
+      let time = 0;
+      let colorScheme = 0;
+      let waveType = 0;
+      let speed = 0.02;
+
+      const colorPalettes = [
+        ['#FF6B6B', '#4ECDC4', '#45B7D1', '#F7FFF7'],
+        ['#2C3E50', '#E74C3C', '#ECF0F1', '#3498DB'],
+        ['#8E44AD', '#2980B9', '#27AE60', '#F1C40F']
+      ];
+
+      function resizeCanvas() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      function getColor(x, y, t) {
+        const value = (simplex.noise3D(x / 500, y / 500, t / 20) + 1) / 2;
+        const palette = colorPalettes[colorScheme];
+        const index = Math.floor(value * palette.length);
+        return palette[index];
+      }
+
+      function drawWave(x, y, t) {
+        switch(waveType) {
+          case 0:
+            return Math.sin(x / 200 + t) * Math.cos(y / 200 + t) * 50;
+          case 1:
+            return simplex.noise3D(x / 300, y / 300, t / 10) * 100;
+          case 2:
+            return Math.sin(x / 100 + y / 100 + t) * 30;
+        }
+      }
+
+      function draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
+        ctx.fillRect(0, 0, width, height);
+
+        for (let x = 0; x < width; x += 20) {
+          for (let y = 0; y < height; y += 20) {
+            const distX = drawWave(x, y, time);
+            const distY = drawWave(y, x, time);
+            ctx.fillStyle = getColor(x + distX, y + distY, time);
+            ctx.beginPath();
+            ctx.arc(x, y, 10, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        time += speed;
+        requestAnimationFrame(draw);
+      }
+
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      draw();
+
+      // Chromecast接收器相關代碼
       const context = cast.framework.CastReceiverContext.getInstance();
       const options = new cast.framework.CastReceiverOptions();
       
-      // Define custom channels
       const CHANNELS = {
         DEFAULT: 'urn:x-cast:com.example.cast',
         CONTROL: 'urn:x-cast:com.example.cast.control',
@@ -67,7 +155,6 @@
         `;
       }
 
-      // Handle different message types
       context.addCustomMessageListener(CHANNELS.DEFAULT, event => {
         displayMessage('Default', event.data.text);
         console.log('Default message:', event.data);
@@ -83,7 +170,6 @@
         console.log('Data message:', event.data);
       });
 
-      // Start the receiver
       context.start(options);
     </script>
   </body>
