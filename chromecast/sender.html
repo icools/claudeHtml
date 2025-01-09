@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sender Page</title>
+    <script type="text/javascript" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+    <style>
+      google-cast-launcher {
+        --connected-color: #4285f4;
+        --disconnected-color: #9b9b9b;
+        margin-left: 10px;
+      }
+      .controls {
+        display: flex;
+        align-items: center;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Sender Page</h1>
+    <p>Send a message to your Chromecast Receiver:</p>
+    <div class="controls">
+      <input type="text" id="messageInput" placeholder="Enter your message" />
+      <button onclick="sendMessage()">Send</button>
+      <google-cast-launcher></google-cast-launcher>
+    </div>
+    <p id="status"></p>
+
+    <script>
+      let session = null;
+
+      function updateStatus(message) {
+        console.log(message);
+        document.getElementById('status').textContent = message;
+      }
+
+      function initializeCastApi() {
+        if (!chrome.cast || !chrome.cast.isAvailable) {
+          updateStatus('Cast API not available yet...');
+          setTimeout(initializeCastApi, 1000);
+          return;
+        }
+
+        try {
+          const context = cast.framework.CastContext.getInstance();
+          context.setOptions({
+            receiverApplicationId: "921A7386", //chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+            autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+          });
+
+          context.addEventListener(
+            cast.framework.CastContextEventType.CAST_STATE_CHANGED,
+            (event) => {
+              if (event.castState === cast.framework.CastState.CONNECTED) {
+                session = context.getCurrentSession();
+                updateStatus('Connected to Chromecast');
+              } else if (event.castState === cast.framework.CastState.NOT_CONNECTED) {
+                session = null;
+                updateStatus('Not connected to Chromecast');
+              }
+            }
+          );
+
+          updateStatus('Cast API initialized successfully');
+        } catch (error) {
+          updateStatus(`Failed to initialize Cast API: ${error.message}`);
+        }
+      }
+
+      function sendMessage() {
+        if (session) {
+          const message = document.getElementById('messageInput').value;
+          session.sendMessage('urn:x-cast:com.example.cast', { text: message })
+            .then(() => {
+              updateStatus(`Message sent successfully: ${message}`);
+            })
+            .catch((error) => {
+              updateStatus(`Error sending message: ${error}`);
+            });
+        } else {
+          updateStatus('No active session');
+        }
+      }
+
+      window['__onGCastApiAvailable'] = function(isAvailable) {
+        if (isAvailable) {
+          initializeCastApi();
+        } else {
+          updateStatus('Cast API is not available');
+        }
+      };
+    </script>
+  </body>
+</html>

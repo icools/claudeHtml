@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosine Function Canvas Drawing</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #060024;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        const a = (x, y, d = Math.cos(Math.hypot(k = x / 8 - 25, e = y / 8 - 25) / 3) * e / 5) => [
+            (q = x / 4 + k / Math.cos(y / 9) * Math.sin(d * 9 - t) + 25) * Math.sin(c = d - t / 8) + 200,
+            (q * 2 + x + y / 2 + d * 90) / 4 * Math.cos(c) + 200
+        ];
+
+        let t = 0;
+
+        function setup() {
+            createCanvas(400, 400);
+            background(6, 36, 36);
+        }
+
+        function draw() {
+            background(6, 36, 36);  // Clear canvas each frame
+            stroke(255, 36);
+            t += Math.PI / 60;
+            for (let y = 99; y < 300; y += 2) {
+                for (let x = 99; ++x < 300;) {
+                    let [px, py] = a(x, y);
+                    point(px, py);
+                }
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+</body>
+</html>
