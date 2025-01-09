@@ -1,6 +1,16 @@
-
+<!-- import -->
 <head>
-    <style> body { margin: 0; } </style>
+    <style> 
+      body, 
+      canvas {
+        margin: 0;
+        background-color: #000000 !important;
+      }
+
+      .scene-container {
+        background: #000000 !important;
+      }
+    </style>
 
     <script src="https://unpkg.com/3d-force-graph"></script>
   <!--  <script src="../../dist/3d-force-graph.js"></script>-->
@@ -24,9 +34,17 @@
       import { CSS2DRenderer, CSS2DObject } from 'https://unpkg.com/three/examples/jsm/renderers/CSS2DRenderer.js';
 
       const Graph = ForceGraph3D({
-        extraRenderers: [new CSS2DRenderer()]
+        extraRenderers: [new CSS2DRenderer()],
+        backgroundColor: '#000000'
       })
-      (document.getElementById('3d-graph'))
+      (document.getElementById('3d-graph'));
+
+      // Force renderer background
+      Graph
+        .renderer()
+        .setClearColor('#000000', 1);
+
+      Graph
         .jsonUrl('https://vasturiano.github.io/3d-force-graph/example/datasets/miserables.json')
         .nodeAutoColorBy('group')
         .nodeThreeObject(node => {
