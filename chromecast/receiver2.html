@@ -1,0 +1,252 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Receiver</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+    <style>
+      ::selection {
+        background: #505050;
+      }
+
+      ::-moz-selection {
+        background: #505050;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        background-color: black;
+      }
+
+      .content-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+
+      .ascii-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+      }
+
+      .ascii-content {
+        color: white;
+        font-family: monospace;
+        white-space: pre;
+        line-height: 8px;
+        letter-spacing: 4px;
+        transform-origin: center;
+        transform: scale(2); /* 放大ASCII藝術 */
+      }
+
+      .message-overlay {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 2;
+        color: #fff;
+        font-family: Arial, sans-serif;
+      }
+
+      h1 {
+        color: #ffffff;
+        font-size: 32px;
+        margin-bottom: 20px;
+      }
+
+      #messageDisplay {
+        font-size: 24px;
+        margin-top: 20px;
+        color: #ffffff;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        border-radius: 4px;
+      }
+
+      .message-container {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+      }
+
+      .message-type {
+        color: #4285f4;
+        font-size: 16px;
+        margin-bottom: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="content-container">
+      <div class="ascii-container">
+        <pre id="d" class="ascii-content"></pre>
+      </div>
+      <div class="message-overlay">
+        <h1>Receiver Page</h1>
+        <div id="messageDisplay">No messages yet.</div>
+      </div>
+    </div>
+    
+    <script>
+      // ASCII兔子相關代碼
+      const pretag = document.getElementById("d");
+      let A = 0;
+      let B = 0;
+      const asciiChars = ".,-~:;=!*#$@";
+      const bunnyPoints = [];
+
+      // 創建兔子模型
+      const createBunnyModel = () => {
+        // ...existing bunny model code...
+        const radius = 1;
+        const earLength = 2;
+        const earWidth = 0.5;
+
+        // 頭部（球體）
+        for (let theta = 0; theta < Math.PI * 2; theta += 0.2) {
+          for (let phi = 0; phi < Math.PI; phi += 0.2) {
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.sin(phi) * Math.sin(theta);
+            const z = radius * Math.cos(phi);
+            bunnyPoints.push({ x, y, z, nx: x, ny: y, nz: z });
+          }
+        }
+
+        // 左耳
+        for (let theta = -Math.PI / 6; theta < Math.PI / 6; theta += 0.2) {
+          for (let phi = Math.PI / 6; phi < Math.PI * 5 / 6; phi += 0.2) {
+            const x = (radius + earLength * Math.sin(phi) * Math.cos(theta)) * 0.5;
+            const y = radius * 0.5 + earWidth * Math.cos(theta);
+            const z = earLength * Math.cos(phi) + radius;
+            bunnyPoints.push({ x, y, z, nx: x, ny: y, nz: z });
+          }
+        }
+
+        // 右耳
+        for (let theta = -Math.PI / 6; theta < Math.PI / 6; theta += 0.2) {
+          for (let phi = Math.PI / 6; phi < Math.PI * 5 / 6; phi += 0.2) {
+            const x = -(radius + earLength * Math.sin(phi) * Math.cos(theta)) * 0.5;
+            const y = radius * 0.5 + earWidth * Math.cos(theta);
+            const z = earLength * Math.cos(phi) + radius;
+            bunnyPoints.push({ x, y, z, nx: x, ny: y, nz: z });
+          }
+        }
+      };
+
+      const asciiframe = () => {
+        // ...existing ascii frame code...
+        const b = [];
+        const zBuffer = [];
+        for (let k = 0; k < 80 * 22; k++) {
+          b[k] = k % 80 === 79 ? "\n" : " ";
+          zBuffer[k] = 0;
+        }
+
+        A += 0.04;
+        B += 0.02;
+
+        const cosA = Math.cos(A);
+        const sinA = Math.sin(A);
+        const cosB = Math.cos(B);
+        const sinB = Math.sin(B);
+
+        bunnyPoints.forEach(point => {
+          let x = point.x;
+          let y = point.y * cosA - point.z * sinA;
+          let z = point.y * sinA + point.z * cosA;
+
+          const x1 = x * cosB + z * sinB;
+          const y1 = y;
+          const z1 = -x * sinB + z * cosB;
+
+          const K2 = 5;
+          const K1 = 80;
+          const ooz = 1 / (z1 + K2);
+
+          const xp = Math.floor(K1 * ooz * x1) + 40;
+          const yp = Math.floor(K1 * ooz * y1) + 12;
+          const idx = xp + 80 * yp;
+
+          if (idx >= 0 && idx < 80 * 22) {
+            const nx = point.nx;
+            const ny = point.ny;
+            const nz = point.nz;
+
+            let nx_rot = nx;
+            let ny_rot = ny * cosA - nz * sinA;
+            let nz_rot = ny * sinA + nz * cosA;
+
+            nx_rot = nx_rot * cosB + nz_rot * sinB;
+            const ny_final = ny_rot;
+            const nz_final = -nx_rot * sinB + nz_rot * cosB;
+
+            const luminance = nz_final;
+            const charIdx = Math.floor((luminance + 1) / 2 * (asciiChars.length - 1));
+            const char = asciiChars[charIdx] || asciiChars[0];
+
+            if (ooz > zBuffer[idx]) {
+              zBuffer[idx] = ooz;
+              b[idx] = char;
+            }
+          }
+        });
+
+        pretag.innerHTML = b.join("");
+      };
+
+      // 初始化ASCII動畫
+      createBunnyModel();
+      setInterval(asciiframe, 50);
+
+      // Chromecast接收器相關代碼
+      const context = cast.framework.CastReceiverContext.getInstance();
+      const options = new cast.framework.CastReceiverOptions();
+      
+      const CHANNELS = {
+        DEFAULT: 'urn:x-cast:com.example.cast',
+        CONTROL: 'urn:x-cast:com.example.cast.control',
+        DATA: 'urn:x-cast:com.example.cast.data'
+      };
+
+      function displayMessage(type, message) {
+        const container = document.getElementById('messageDisplay');
+        container.innerHTML = `
+          <div class="message-container">
+            <div class="message-type">${type}</div>
+            <div class="message-content">${message}</div>
+          </div>
+        `;
+      }
+
+      context.addCustomMessageListener(CHANNELS.DEFAULT, event => {
+        displayMessage('Default', event.data.text);
+        console.log('Default message:', event.data);
+      });
+
+      context.addCustomMessageListener(CHANNELS.CONTROL, event => {
+        displayMessage('Control', event.data.text);
+        console.log('Control message:', event.data);
+      });
+
+      context.addCustomMessageListener(CHANNELS.DATA, event => {
+        displayMessage('Data', event.data.text);
+        console.log('Data message:', event.data);
+      });
+
+      context.start(options);
+    </script>
+  </body>
+</html>

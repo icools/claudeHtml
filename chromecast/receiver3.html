@@ -1,0 +1,90 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Receiver</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+    <style>
+      html, body {
+        background-color: #000;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+      }
+      body {
+        color: #fff;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      h1 {
+        color: #ffffff;
+        font-size: 32px;
+        margin-bottom: 20px;
+      }
+      #messageDisplay {
+        font-size: 24px;
+        margin-top: 20px;
+        color: #ffffff;
+      }
+      .message-container {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #444;
+        border-radius: 4px;
+      }
+      .message-type {
+        color: #4285f4;
+        font-size: 16px;
+        margin-bottom: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Receiver Page</h1>
+    <div id="messageDisplay">No messages yet.</div>
+    
+    <script>
+      const context = cast.framework.CastReceiverContext.getInstance();
+      const options = new cast.framework.CastReceiverOptions();
+      
+      // Define custom channels
+      const CHANNELS = {
+        DEFAULT: 'urn:x-cast:com.example.cast',
+        CONTROL: 'urn:x-cast:com.example.cast.control',
+        DATA: 'urn:x-cast:com.example.cast.data'
+      };
+
+      function displayMessage(type, message) {
+        const container = document.getElementById('messageDisplay');
+        container.innerHTML = `
+          <div class="message-container">
+            <div class="message-type">${type}</div>
+            <div class="message-content">${message}</div>
+          </div>
+        `;
+      }
+
+      // Handle different message types
+      context.addCustomMessageListener(CHANNELS.DEFAULT, event => {
+        displayMessage('Default', event.data.text);
+        console.log('Default message:', event.data);
+      });
+
+      context.addCustomMessageListener(CHANNELS.CONTROL, event => {
+        displayMessage('Control', event.data.text);
+        console.log('Control message:', event.data);
+      });
+
+      context.addCustomMessageListener(CHANNELS.DATA, event => {
+        displayMessage('Data', event.data.text);
+        console.log('Data message:', event.data);
+      });
+
+      // Start the receiver
+      context.start(options);
+    </script>
+  </body>
+</html>
