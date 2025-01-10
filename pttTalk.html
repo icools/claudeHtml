@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            color: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: "微軟正黑體", sans-serif;
+            overflow: hidden;
+        }
+        #quote {
+            padding: 20px;
+            text-align: center;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div id="quote"></div>
+
+    <script>
+        const quotes = [
+            "樓上說得好，給推",
+            "八卦板首po必噓",
+            "我阿嬤都知道了啦",
+            "這很科卦欸",
+            "笑死，根本廢文",
+            "不要戰啦，認真就輸了",
+            "這我可以，大大說得對",
+            "小弟不才，個人淺見",
+            "嘴角忍不住上揚",
+            "從南波萬講起..."
+        ];
+
+        function updateQuote() {
+            const quoteElement = document.getElementById('quote');
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            quoteElement.textContent = randomQuote;
+            adjustFontSize();
+        }
+
+        function adjustFontSize() {
+            const quote = document.getElementById('quote');
+            const container = document.body;
+            
+            // 重置字體大小
+            quote.style.fontSize = '1px';
+            
+            // 逐步增加字體大小直到填滿螢幕寬度的90%
+            let fontSize = 1;
+            while (quote.offsetWidth < container.offsetWidth * 0.9 && 
+                   quote.offsetHeight < container.offsetHeight * 0.9) {
+                fontSize++;
+                quote.style.fontSize = fontSize + 'px';
+            }
+            
+            // 微調回最後一個適合的大小
+            quote.style.fontSize = (fontSize - 1) + 'px';
+        }
+
+        // 初始化顯示
+        updateQuote();
+
+        // 每3秒更換一次語錄
+        setInterval(updateQuote, 3000);
+
+        // 當視窗大小改變時重新調整字體
+        window.addEventListener('resize', adjustFontSize);
+    </script>
+</body>
+</html>
