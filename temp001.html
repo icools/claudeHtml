@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>立體便利貼</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .input-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 90%;
+            max-width: 500px;
+            padding: 15px;
+            background: rgba(30, 30, 30, 0.8);
+            border-radius: 12px;
+            backdrop-filter: blur(8px);
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-text {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(50, 50, 50, 0.9);
+            color: white;
+            font-size: 16px;
+        }
+
+        .input-text:focus {
+            outline: 2px solid #ffd700;
+        }
+
+        .add-button {
+            padding: 10px 20px;
+            background: #ffd700;
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .add-button:hover {
+            background: #ffed4a;
+        }
+
+        .sticky-note {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: #fff7a1;
+            padding: 20px;
+            border-radius: 8px;
+            cursor: move;
+            user-select: none;
+            transform: rotate(var(--rotation, 2deg));
+            transition: transform 0.2s;
+            box-shadow: 
+                2px 2px 10px rgba(0,0,0,0.2),
+                inset 0 -40px 40px rgba(255,255,200,0.2),
+                inset 0 25px 10px rgba(255,255,255,0.6);
+        }
+
+        .sticky-note::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 100%);
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        .sticky-note:hover {
+            transform: scale(1.02) rotate(var(--rotation, 2deg));
+            box-shadow: 
+                3px 3px 12px rgba(0,0,0,0.3),
+                inset 0 -40px 40px rgba(255,255,200,0.2),
+                inset 0 25px 10px rgba(255,255,255,0.6);
+        }
+
+        .note-text {
+            width: 100%;
+            height: 100%;
+            overflow-wrap: break-word;
+            overflow: hidden;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="input-container">
+        <input type="text" class="input-text" placeholder="輸入便利貼內容..." id="noteInput">
+        <button class="add-button" id="addButton">新增</button>
+    </div>
+
+    <script>
+        let isDragging = false;
+        let currentNote = null;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+
+        function createNote(text) {
+            const note = document.createElement('div');
+            note.className = 'sticky-note';
+            
+            // 隨機位置和角度
+            const x = Math.random() * (window.innerWidth - 250);
+            const y = Math.random() * (window.innerHeight - 250);
+            const rotation = Math.random() * 40 - 20; // 隨機角度範圍 -20 到 20 度
+            
+            note.style.left = x + 'px';
+            note.style.top = y + 'px';
+            note.style.transform = `rotate(${rotation}deg)`;
+
+            const textDiv = document.createElement('div');
+            textDiv.className = 'note-text';
+            textDiv.textContent = text;
+            
+            note.appendChild(textDiv);
+            document.body.appendChild(note);
+
+            // 拖曳事件監聽
+            note.addEventListener('mousedown', dragStart);
+            note.addEventListener('mousemove', drag);
+            note.addEventListener('mouseup', dragEnd);
+            note.addEventListener('mouseleave', dragEnd);
+        }
+
+        function dragStart(e) {
+            if (e.target.className === 'sticky-note') {
+                isDragging = true;
+                currentNote = e.target;
+                
+                const rect = currentNote.getBoundingClientRect();
+                xOffset = e.clientX - rect.left;
+                yOffset = e.clientY - rect.top;
+                
+                currentNote.style.cursor = 'grabbing';
+            }
+        }
+
+        function drag(e) {
+            if (isDragging && currentNote) {
+                e.preventDefault();
+                
+                const x = e.clientX - xOffset;
+                const y = e.clientY - yOffset;
+                
+                currentNote.style.left = x + 'px';
+                currentNote.style.top = y + 'px';
+            }
+        }
+
+        function dragEnd() {
+            isDragging = false;
+            if (currentNote) {
+                currentNote.style.cursor = 'grab';
+                currentNote = null;
+            }
+        }
+
+        // 新增便利貼的處理
+        document.getElementById('addButton').addEventListener('click', () => {
+            const input = document.getElementById('noteInput');
+            const text = input.value.trim();
+            
+            if (text) {
+                createNote(text);
+                input.value = '';
+            }
+        });
+
+        // Enter 鍵新增便利貼
+        document.getElementById('noteInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const text = e.target.value.trim();
+                if (text) {
+                    createNote(text);
+                    e.target.value = '';
+                }
+            }
+        });
+
+        // 全域拖曳事件處理
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) drag(e);
+        });
+
+        document.addEventListener('mouseup', dragEnd);
+
+        // 預設水果便利貼
+        const defaultNotes = [
+            '🍎 蘋果是一種常見的水果，富含維生素C和膳食纖維。新鮮的蘋果脆甜多汁，是很好的健康零食！',
+            '🍌 香蕉含有豐富的鉀質和維生素B6，易於消化且補充體力。非常適合運動前後食用。',
+            '🍊 柑橘類水果富含維生素C，酸甜可口。可以提升免疫力，是冬天很棒的水果選擇。'
+        ];
+
+        // 網頁載入時自動創建預設便利貼
+        window.addEventListener('load', () => {
+            defaultNotes.forEach(note => {
+                createNote(note);
+            });
+        });
+    </script>
+</body>
+</html>
