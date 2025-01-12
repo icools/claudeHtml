@@ -149,9 +149,16 @@
       }
 
       function sendMessage() {
+        const CHANNELS = {
+          DEFAULT: 'urn:x-cast:icools.github.io',
+          CONTROL: 'urn:x-cast:icools.github.io.cast.control',
+          DATA: 'urn:x-cast:icools.github.io.cast.data'
+        };
+
+        CHANNELS.DEFAULT
         if (session) {
           const message = document.getElementById('messageInput').value;
-          session.sendMessage('urn:x-cast:com.example.cast', { text: message })
+          session.sendMessage(CHANNELS.DEFAULT, { text: message })
             .then(() => {
               updateStatus(`Message sent successfully: ${message}`);
             })
