@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Receiver</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+    <style>
+      html, body {
+        background-color: #000;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+      }
+      body {
+        color: #fff;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      #messageDisplay {
+        font-size: 24px;
+        margin-top: 20px;
+        color: #ffffff;
+      }
+      .message-container {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #444;
+        border-radius: 4px;
+      }
+      .message-type {
+        color: #4285f4;
+        font-size: 16px;
+        margin-bottom: 5px;
+      }
+      /* 新增表格樣式 */
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 20px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+      th, td {
+        border: 1px solid #444;
+        padding: 8px;
+        text-align: left;
+        color: #fff;
+      }
+      th {
+        background-color: rgba(66, 133, 244, 0.3);
+      }
+      .waiting-screen {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-size: 24px;
+        color: #fff;
+      }
+      .error-message {
+        color: #ff4444;
+        margin-top: 10px;
+      }
+      .response-container {
+        margin-top: 20px;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 5px;
+        white-space: pre-wrap;
+      }
+      /* Add new styles for mode B */
+      #modeBDisplay {
+        padding: 20px;
+        text-align: center;
+        white-space: nowrap;
+        /* height: 100vh;
+        width: 100vw; */
+        /* display: flex; */
+        justify-content: center;
+        align-items: center;
+        font-size: 24px; /* Add default font size */
+        opacity: 0; /* Use opacity instead of visibility */
+      }
+    </style>
+  </head>
+  <body>
+    <div id="waiting-screen" class="waiting-screen">Waiting for API key...</div>
+    <div id="main-content" style="display: none;">
+      <div id="modeADisplay">
+        <div id="messageDisplay">No messages yet.</div>
+        <div id="table-container"></div>
+      </div>
+      <div id="modeBDisplay"></div>
+    </div>
+    
+    <script>
+      const context = cast.framework.CastReceiverContext.getInstance();
+      const options = new cast.framework.CastReceiverOptions();
+      
+      let updateInterval;
+      const testMode = true;
+      const urlParams = new URLSearchParams(window.location.search);
+      const groqApiKey = urlParams.get('groq');
+      if (groqApiKey) {
+        console.log('API key from URL length:', groqApiKey.length);
+        localStorage.setItem('groqApiKey', groqApiKey);
+      } else {
+        console.log("API key from URL length,no key key");
+      }
+      
+      const CHANNELS = {
+          DEFAULT: 'urn:x-cast:icools.github.io',
+          CONTROL: 'urn:x-cast:icools.github.io.cast.control',
+          DATA: 'urn:x-cast:icools.github.io.cast.data'
+      };
+
+      function fetchData(groqApiKey) {
+        const result = sendPrompt("gemma2-9b-it","","用台灣PTT鄉民個口吻，講一句鄉民會講的留言，不需要額外的說明。",groqApiKey)
+          .then(response => response.json())
+          .then(data => {
+            if (data && data.choices && data.choices.length > 0) {
+              displayResult(data);
+            } else {
+              throw new Error('Invalid response format');
+            }
+          })
+          .catch(error => {
+            console.error('Error fetching data:', error);
+            displayMessage('Error', error.message);
+          });
+      }
+
+      function initializeWithKey(apiKey) {
+        console.log("initializeWithKey...");
+        localStorage.setItem('groqApiKey', apiKey);
+        document.getElementById('waiting-screen').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        
+        // Setup periodic updates
+        if (updateInterval) {
+          clearInterval(updateInterval);
+        }
+        updateInterval = setInterval(() => fetchData(apiKey), 15000);
+        fetchData(apiKey);
+      }
+
+      // Check for existing API key on startup
+      window.onload = function() {
+        console.log("onLoad");
+        
+        const savedApiKey = localStorage.getItem('groqApiKey');
+        console.log('API key from URL length:', savedApiKey.length);
+        if (savedApiKey) {
+          initializeWithKey(savedApiKey);
+          setDisplayMode('B');
+        }
+      };
+
+      if(!testMode) {
+        context.addCustomMessageListener(CHANNELS.CONTROL, event => {
+          if (event.data && event.data.groqApi) {
+            initializeWithKey(event.data.groqApi);
+          }
+          if (event.data && event.data.mode) {
+            setDisplayMode(event.data.mode);
+          }
+          displayMessage('Control', JSON.stringify(event.data));
+          console.log('Control message:', event.data);
+        });
+
+        context.addCustomMessageListener(CHANNELS.DEFAULT, event => {
+          displayMessage('Default', event.data.text);
+          console.log('Default message:', event.data);
+        });
+      }
+      
+      async function sendPrompt(model, text, promptText, groqApiKey) {
+        console.log("sendPrompt...");
+        return agent(model, groqApiKey, {
+          messages: [
+            {
+              role: "user",
+              content: `${promptText}.${text}`,
+            }
+          ],
+          model: model,
+        });
+      }
+      async function agent(model, groqApiKey, messages) {
+        return await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
+          method: "POST",
+          headers: {
+            'Authorization': `Bearer ${groqApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(messages),
+        });
+      }
+
+      let currentMode = 'B'; // Default mode
+
+      function adjustFontSize() {
+          console.log("adjustFontSize...");
+          const quote = document.getElementById('modeBDisplay');
+          const container = document.body;
+          const containerWidth = container.offsetWidth * 0.9;
+          const containerHeight = container.offsetHeight * 0.9;
+          
+          // 重置字體大小
+          quote.style.fontSize = '24px';
+          
+          // 逐步增加字體大小直到填滿螢幕寬度的90%
+          let fontSize = 99;
+
+          console.log("adjustFontSize,quote.offsetWidth=",quote.offsetWidth);
+          console.log("adjustFontSize,containerWidth=",containerWidth);
+          console.log("adjustFontSize,quote.offsetHeight=",quote.offsetHeight);
+          console.log("adjustFontSize,containerHeight=",containerHeight);
+          
+          let adjustOnce = true;
+          while (adjustOnce || 
+                  (quote.offsetWidth < containerWidth && 
+                  quote.offsetHeight < containerHeight)
+          ) {
+              adjustOnce = false;
+              console.log("adjustFontSize,size=",fontSize);
+              fontSize--;
+              // quote.style.fontSize = fontSize + 'px';
+          }
+          
+          // 微調回最後一個適合的大小
+          quote.style.fontSize = (fontSize - 1) + 'px';
+      }
+
+      function setDisplayMode(mode) {
+        currentMode = mode;
+        const modeADisplay = document.getElementById('modeADisplay');
+        const modeBDisplay = document.getElementById('modeBDisplay');
+        
+        if (mode === 'A') {
+          modeADisplay.style.display = 'block';
+          modeBDisplay.style.opacity = '0';
+        } else {
+          modeADisplay.style.display = 'none';
+          modeBDisplay.style.opacity = '1';
+          adjustFontSize();
+        }
+      }
+
+      function displayResult(data) {
+        if (!data?.choices?.[0]?.message?.content) {
+          console.error('Invalid response format:', data);
+          return;
+        }
+        const content = data.choices[0].message.content;
+        
+        if (currentMode === 'A') {
+          const responseContainer = document.createElement('div');
+          responseContainer.className = 'response-container';
+          responseContainer.textContent = content;
+          const mainContent = document.getElementById('modeADisplay');
+          mainContent.insertBefore(responseContainer, mainContent.firstChild);
+        } else {
+          const modeBDisplay = document.getElementById('modeBDisplay');
+          modeBDisplay.textContent = content;
+          adjustFontSize();
+          // Force recalculation after content update
+          // setTimeout(adjustFontSize, 0);
+        }
+      }
+
+      async function handleGroqRequest(data) {
+        console.log("handleGroqRequest...");
+        try {
+          const { model, text, prompt } = data;
+          const apiKey = localStorage.getItem('groqApiKey');
+          
+          if (!apiKey) {
+            throw new Error('No API key available');
+          }
+
+          const response = await sendPrompt(model, text, prompt, apiKey);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const result = await response.json();
+          if (result.choices && result.choices.length > 0) {
+            displayMessage('Groq Response', result.choices[0].message.content);
+          } else {
+            throw new Error('No response received from the API');
+          }
+        } catch (error) {
+          displayMessage('Error', error.message);
+          console.error('Groq API Error:', error);
+        }
+      }
+
+      context.addCustomMessageListener(CHANNELS.DATA, event => {
+        if (event.data.type === 'groq_request') {
+          handleGroqRequest(event.data);
+        } else {
+          displayMessage('Data', event.data.text);
+        }
+        console.log('Data message:', event.data);
+      });
+
+      function displayTable(data) {
+        if (!data || data.length === 0) {
+          document.getElementById('table-container').innerHTML = 'No data available.';
+          return;
+        }
+
+        const table = document.createElement('table');
+        const headers = Object.keys(data[0]);
+
+        const headerRow = table.insertRow();
+        headers.forEach(header => {
+          const th = document.createElement('th');
+          th.textContent = header;
+          headerRow.appendChild(th);
+        });
+
+        data.forEach(item => {
+          const row = table.insertRow();
+          headers.forEach(header => {
+            const cell = row.insertCell();
+            cell.textContent = item[header] || '';
+          });
+        });
+
+        document.getElementById('table-container').appendChild(table);
+      }
+
+      function displayMessage(type, message) {
+        console.log("displayMessage...");
+        const container = document.getElementById('messageDisplay');
+        container.innerHTML = `
+          <div class="message-container">
+            <div class="message-type">${type}</div>
+            <div class="message-content">${message}</div>
+          </div>
+        `;
+      }
+
+      // 啟動接收器並載入資料
+      if(!testMode) {
+        context.start(options);
+      }
+
+      // Add resize listener for mode B
+      window.addEventListener('resize', () => {
+        if (currentMode === 'B') {
+          adjustFontSize();
+        }
+      });
+    </script>
+  </body>
+</html>

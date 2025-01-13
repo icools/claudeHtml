@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sender Page</title>
+    <script type="text/javascript" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+    <style>
+      body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+
+      h1 {
+        color: #4285f4;
+        border-bottom: 2px solid #4285f4;
+        padding-bottom: 10px;
+      }
+
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin: 15px 0;
+        flex-wrap: wrap;
+      }
+
+      select, input, button {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      button {
+        background: #4285f4;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #3367d6;
+      }
+
+      input {
+        flex: 1;
+        min-width: 200px;
+      }
+
+      #status {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 4px;
+        background: #e8f0fe;
+        color: #1967d2;
+      }
+
+      .target-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      google-cast-launcher {
+        --connected-color: #4285f4;
+        --disconnected-color: #9b9b9b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Chromecast Sender</h1>
+      
+      <div class="target-info">
+        <select id="receiverId">
+          <option value="921A7386">Receiver 1 (921A7386)</option>
+          <option value="3EB286B6">Receiver 2 (3EB286B6)</option>
+          <option value="1B03360D">Receiver 3 (1B03360D)</option>
+        </select>
+        <button onclick="setTarget()">Set Target</button>
+        <span id="currentTarget"></span>
+      </div>
+
+      <p>Send a message to your Chromecast Receiver:</p>
+      <div class="controls">
+        <input type="text" id="messageInput" placeholder="Enter your message" />
+        <button onclick="sendMessage()">Send</button>
+        <google-cast-launcher></google-cast-launcher>
+      </div>
+      <p id="status"></p>
+    </div>
+
+    <script>
+      let session = null;
+      let currentReceiverId = "921A7386";
+
+      function updateStatus(message) {
+        console.log(message);
+        document.getElementById('status').textContent = message;
+      }
+
+      function initializeCastApi() {
+        if (!chrome.cast || !chrome.cast.isAvailable) {
+          updateStatus('Cast API not available yet...');
+          setTimeout(initializeCastApi, 1000);
+          return;
+        }
+        updateStatus('Cast API is available');
+      }
+
+      function setTarget() {
+        try {
+          currentReceiverId = document.getElementById('receiverId').value;
+          const context = cast.framework.CastContext.getInstance();
+          context.setOptions({
+            receiverApplicationId: currentReceiverId,
+            autoJoinPolicy: chrome.cast.AutoJoinPolicy.AutoJoinPolicy
+          });
+
+          document.getElementById('currentTarget').textContent = 
+            `Current Target: ${currentReceiverId}`;
+
+          context.addEventListener(
+            cast.framework.CastContextEventType.CAST_STATE_CHANGED,
+            (event) => {
+              if (event.castState === cast.framework.CastState.CONNECTED) {
+                session = context.getCurrentSession();
+                updateStatus(`Connected to Chromecast (${currentReceiverId})`);
+              } else if (event.castState === cast.framework.CastState.NOT_CONNECTED) {
+                session = null;
+                updateStatus('Not connected to Chromecast');
+              }
+            }
+          );
+
+          updateStatus(`Cast API initialized for receiver: ${currentReceiverId}`);
+        } catch (error) {
+          updateStatus(`Failed to initialize Cast API: ${error.message}`);
+        }
+      }
+
+      function sendMessage() {
+        const CHANNELS = {
+          DEFAULT: 'urn:x-cast:icools.github.io',
+          CONTROL: 'urn:x-cast:icools.github.io.cast.control',
+          DATA: 'urn:x-cast:icools.github.io.cast.data'
+        };
+
+        CHANNELS.DEFAULT
+        if (session) {
+
+
+          const custom_message = document.getElementById('messageInput').value;
+          const message = {
+            type: 'command',
+            text: custom_message,
+            timestamp: Date.now()
+          };
+          session.sendMessage(CHANNELS.DEFAULT, message)
+            .then(() => {
+              updateStatus(`Message sent successfully: ${message}`);
+            })
+            .catch((error) => {
+              updateStatus(`Error sending message: ${error}`);
+            });
+        } else {
+          updateStatus('No active session');
+        }
+      }
+
+      window['__onGCastApiAvailable'] = function(isAvailable) {
+        if (isAvailable) {
+          initializeCastApi();
+        } else {
+          updateStatus('Cast API is not available');
+        }
+      };
+    </script>
+  </body>
+</html>

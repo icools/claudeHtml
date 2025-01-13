@@ -18,7 +18,7 @@
         #quote {
             padding: 20px;
             text-align: center;
-            white-space: nowrap;
+            white-space: normal; /* 新增 */
         }
     </style>
 </head>
@@ -250,19 +250,20 @@
         function adjustFontSize() {
             const quote = document.getElementById('quote');
             const container = document.body;
-            
-            // 重置字體大小
-            quote.style.fontSize = '1px';
-            
-            // 逐步增加字體大小直到填滿螢幕寬度的90%
-            let fontSize = 1;
-            while (quote.offsetWidth < container.offsetWidth * 0.9 && 
-                   quote.offsetHeight < container.offsetHeight * 0.9) {
+            const containerWidth = container.offsetWidth * 0.9;
+            const containerHeight = container.offsetHeight * 0.9;
+            // 重置字體大小並從小往上增
+            let fontSize = 10;
+            quote.style.fontSize = fontSize + 'px';
+            // 逐步放大直到超過指定寬或高
+            while (
+                quote.scrollWidth < containerWidth &&
+                quote.scrollHeight < containerHeight
+            ) {
                 fontSize++;
                 quote.style.fontSize = fontSize + 'px';
             }
-            
-            // 微調回最後一個適合的大小
+            // 回到上一個可行大小
             quote.style.fontSize = (fontSize - 1) + 'px';
         }
 
