@@ -1,3 +1,5 @@
+
+<!-- 讓AI一次取得10筆或者20筆，播放完了在觸發取得 -->
 <!DOCTYPE html>
 <html>
   <head>
@@ -73,10 +75,8 @@
       #modeBDisplay {
         padding: 20px;
         text-align: center;
-        white-space: nowrap;
-        /* height: 100vh;
-        width: 100vw; */
-        /* display: flex; */
+        white-space: normal; /* allow multiline */
+        word-break: break-word;
         justify-content: center;
         align-items: center;
         font-size: 24px; /* Add default font size */
@@ -204,33 +204,12 @@
           console.log("adjustFontSize...");
           const quote = document.getElementById('modeBDisplay');
           const container = document.body;
-          const containerWidth = container.offsetWidth * 0.9;
-          const containerHeight = container.offsetHeight * 0.9;
-          
-          // 重置字體大小
-          quote.style.fontSize = '24px';
-          
-          // 逐步增加字體大小直到填滿螢幕寬度的90%
-          let fontSize = 99;
-
-          console.log("adjustFontSize,quote.offsetWidth=",quote.offsetWidth);
-          console.log("adjustFontSize,containerWidth=",containerWidth);
-          console.log("adjustFontSize,quote.offsetHeight=",quote.offsetHeight);
-          console.log("adjustFontSize,containerHeight=",containerHeight);
-          
-          let adjustOnce = true;
-          while (adjustOnce || 
-                  (quote.offsetWidth < containerWidth && 
-                  quote.offsetHeight < containerHeight)
-          ) {
-              adjustOnce = false;
-              console.log("adjustFontSize,size=",fontSize);
-              fontSize--;
-              // quote.style.fontSize = fontSize + 'px';
+          let fontSize = 150;
+          quote.style.fontSize = fontSize + 'px';
+          while ((quote.scrollWidth > container.clientWidth || quote.scrollHeight > container.clientHeight) && fontSize > 10) {
+            fontSize--;
+            quote.style.fontSize = fontSize + 'px';
           }
-          
-          // 微調回最後一個適合的大小
-          quote.style.fontSize = (fontSize - 1) + 'px';
       }
 
       function setDisplayMode(mode) {
