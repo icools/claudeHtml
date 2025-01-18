@@ -132,7 +132,9 @@
             vec2 v;
             o = vec4(0.0,0.0,0.0,alpha);
             
-            for(float i = 0.0; i < 50.0; i++) {
+            // Fixed iteration count instead of dynamic
+            const float MAX_ITERATIONS = 50.0;
+            for(float i = 0.0; i < MAX_ITERATIONS; i++) {
                 float f = 3.0 + snoise2D(p + vec2(t*7.0, 0.0));
                 v = p + cos(i*i+(t+p.x*0.1)*0.03+i*vec2(11,9))*5.0;
                 o += (cos(sin(i)*vec4(1,2,3,1))+1.0)*exp(sin(i*i+t))/length(max(v,vec2(v.x*f*0.02,v.y)));
@@ -250,7 +252,9 @@
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.useProgram(program);
 
-            const time = (Date.now() - startTime) * 0.001;
+            const currentTime = Date.now();
+            const time = (currentTime - startTime) * 0.001;
+
             gl.uniform1f(tLocation, time);
             gl.uniform2f(rLocation, canvas.width, canvas.height);
             gl.uniform1f(alphaLocation, isDark ? 255.0 : 0.0);
