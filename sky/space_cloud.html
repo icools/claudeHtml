@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stripy Anti-aliasing</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="glCanvas"></canvas>
+    
+    <script id="vertexShader" type="x-shader/x-vertex">
+        attribute vec4 aVertexPosition;
+        void main() {
+            gl_Position = aVertexPosition;
+        }
+    </script>
+
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        #extension GL_OES_standard_derivatives : enable
+        precision highp float;
+        uniform vec2 resolution;
+        uniform float time;
+
+        #define GAMMA 2.2
+
+        // Helper function to simulate round()
+        float round(float x) {
+            return floor(x + 0.5);
+        }
+
+        // Manual derivatives calculation as fallback
+        vec2 manual_derivatives(float value, vec2 coord) {
+            vec2 dx = dFdx(coord);
+            vec2 dy = dFdy(coord);
+            float x1 = cos((coord.x + dx.x)*9.)*cos((coord.y + dx.y)*9.)*3.+(coord.x + dx.x)*7.+(coord.y + dx.y)*9.+time;
+            float x2 = cos((coord.x - dx.x)*9.)*cos((coord.y - dx.y)*9.)*3.+(coord.x - dx.x)*7.+(coord.y - dx.y)*9.+time;
+            float y1 = cos((coord.x + dy.x)*9.)*cos((coord.y + dy.y)*9.)*3.+(coord.x + dy.x)*7.+(coord.y + dy.y)*9.+time;
+            float y2 = cos((coord.x - dy.x)*9.)*cos((coord.y - dy.y)*9.)*3.+(coord.x - dy.x)*7.+(coord.y - dy.y)*9.+time;
+            return vec2((x1 - x2)/(2.0*length(dx)), (y1 - y2)/(2.0*length(dy)));
+        }
+
+        float antialias_l2_dxy(float d, vec2 dxy) {
+            float width = length(dxy);
+            float scale = width>0.0? 1.0/width : 1e7;
+            return clamp(0.5 + 0.7 * scale * d, 0.0, 1.0);
+        }
+
+        vec3 color(float index) {
+            return cos(index+vec3(0,2,4))*0.5+0.5;
+        }
+
+        void main() {
+            vec2 uv = (gl_FragCoord.xy-0.5*resolution.xy)/resolution.y;
+            
+            float value = cos(uv.x*9.)*cos(uv.y*9.)*3.+uv.x*7.+uv.y*9.+time;
+            float stripe_grad = value;
+            float stripe_step = round(stripe_grad);
+            float stripe_frac = stripe_grad - stripe_step;
+            
+            vec2 dxy = manual_derivatives(stripe_grad, uv);
+            
+            vec3 c1 = color(stripe_step+0.0);
+            vec3 c2 = color(stripe_step+1.0);
+            vec3 col = mix(c1, c2, antialias_l2_dxy(stripe_frac,dxy));
+
+            gl_FragColor = vec4(pow(col, 1.0/vec3(GAMMA)),1.0);
+        }
+    </script>
+
+    <script>
+        let gl;
+        let program;
+        let canvas;
+        let timeLocation;
+        let resolutionLocation;
+
+        function initGL() {
+            canvas = document.querySelector("#glCanvas");
+            gl = canvas.getContext("webgl");
+
+            if (!gl) {
+                alert("Unable to initialize WebGL.");
+                return;
+            }
+
+            // Enable derivatives extension
+            gl.getExtension('OES_standard_derivatives');
+
+            const vsSource = document.querySelector("#vertexShader").text;
+            const fsSource = document.querySelector("#fragmentShader").text;
+
+            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+            program = createProgram(gl, vertexShader, fragmentShader);
+
+            const positions = new Float32Array([
+                -1.0, -1.0,
+                1.0, -1.0,
+                -1.0, 1.0,
+                1.0, 1.0,
+            ]);
+
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+            const aVertexPosition = gl.getAttribLocation(program, "aVertexPosition");
+            gl.enableVertexAttribArray(aVertexPosition);
+            gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
+
+            timeLocation = gl.getUniformLocation(program, "time");
+            resolutionLocation = gl.getUniformLocation(program, "resolution");
+
+            resize();
+            window.addEventListener('resize', resize);
+            requestAnimationFrame(render);
+        }
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function createProgram(gl, vertexShader, fragmentShader) {
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program link error:', gl.getProgramInfoLog(program));
+                return null;
+            }
+            return program;
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+
+        function render(time) {
+            time *= 0.001; // Convert to seconds
+
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.useProgram(program);
+            gl.uniform1f(timeLocation, time);
+            gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+            
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            
+            requestAnimationFrame(render);
+        }
+
+        window.onload = initGL;
+    </script>
+</body>
+</html>
