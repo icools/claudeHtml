@@ -1,0 +1,62 @@
+<!-- https://en.m.wikipedia.org/wiki/Rhombicosidodecahedron -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhombicosidodecahedron</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div style="text-align: center;">
+        <h1>Dynamic Rhombicosidodecahedron</h1>
+        <canvas id="rhombicosidodecahedronCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('rhombicosidodecahedronCanvas');
+        const width = window.innerWidth * 0.9;
+        const height = window.innerHeight * 0.8;
+        canvas.width = width;
+        canvas.height = height;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas });
+        renderer.setSize(width, height);
+
+        const geometry = new THREE.IcosahedronGeometry(2, 0); // Replaced PolyhedronGeometry with standard geometry
+        const material = new THREE.MeshStandardMaterial({ color: 0x0077ff, wireframe: true, wireframeLinewidth: 2 });
+        const mesh = new THREE.Mesh(geometry, material);
+
+        scene.add(mesh);
+
+        const light1 = new THREE.PointLight(0xffffff, 1);
+        light1.position.set(5, 5, 5);
+        scene.add(light1);
+
+        const light2 = new THREE.AmbientLight(0x404040, 0.5); // Added ambient light
+        scene.add(light2);
+
+        camera.position.z = 5;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            mesh.rotation.x += 0.01;
+            mesh.rotation.y += 0.01;
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            const newWidth = window.innerWidth * 0.9;
+            const newHeight = window.innerHeight * 0.8;
+            renderer.setSize(newWidth, newHeight);
+            camera.aspect = newWidth / newHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        animate();
+    </script>
+</body>
+</html>

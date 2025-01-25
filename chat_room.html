@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Manager</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f0f0f0;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 3fr;
+      gap: 16px;
+      width: 80%;
+      background: #fff;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .chatrooms {
+      border-right: 1px solid #ddd;
+    }
+    .chatroom {
+      padding: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .chatroom.active {
+      background: #cce5ff;
+      border-color: #007bff;
+    }
+    .chat-content {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .messages {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f9f9f9;
+      margin-bottom: 8px;
+    }
+    .message {
+      margin-bottom: 8px;
+      padding: 8px;
+      background: #e9ecef;
+      border-radius: 4px;
+    }
+    .input-area {
+      display: flex;
+      gap: 8px;
+    }
+    .input-area textarea {
+      flex-grow: 1;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .input-area button {
+      padding: 8px 16px;
+      background: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .input-area button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="chatrooms">
+      <h2>Chatrooms</h2>
+      <div id="chatrooms-container"></div>
+    </div>
+    <div class="chat-content">
+      <h2 id="chat-title">Select a Chatroom</h2>
+      <div id="messages" class="messages"></div>
+      <div class="input-area">
+        <textarea id="message-input" placeholder="Type a message..."></textarea>
+        <button id="send-button">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chatrooms = [
+      {
+        id: 1,
+        name: "Chatroom A",
+        messages: ["Hi there!", "Welcome to Chatroom A!", "How's everyone doing?"],
+      },
+      {
+        id: 2,
+        name: "Chatroom B",
+        messages: ["Hello!", "Chatroom B is the best!", "Let's discuss ideas."],
+      },
+      {
+        id: 3,
+        name: "Chatroom C",
+        messages: ["Hey!", "Good to see you here!", "What's the topic today?"],
+      },
+      {
+        id: 4,
+        name: "Chatroom D",
+        messages: ["Morning!", "What's the agenda for today?", "Let's start brainstorming."]
+      },
+      {
+        id: 5,
+        name: "Chatroom E",
+        messages: ["Hi!", "Any updates on the project?", "Looking forward to the discussion."]
+      }
+    ];
+
+    const chatroomsContainer = document.getElementById('chatrooms-container');
+    const messagesContainer = document.getElementById('messages');
+    const chatTitle = document.getElementById('chat-title');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+
+    let currentChatroom = null;
+
+    function renderChatrooms() {
+      chatroomsContainer.innerHTML = '';
+      chatrooms.forEach((chatroom) => {
+        const chatroomDiv = document.createElement('div');
+        chatroomDiv.className = `chatroom ${currentChatroom === chatroom ? 'active' : ''}`;
+        chatroomDiv.textContent = chatroom.name;
+        chatroomDiv.onclick = () => selectChatroom(chatroom);
+        chatroomsContainer.appendChild(chatroomDiv);
+      });
+    }
+
+    function renderMessages() {
+      messagesContainer.innerHTML = '';
+      if (!currentChatroom) return;
+      currentChatroom.messages.forEach((message) => {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message';
+        messageDiv.textContent = message;
+        messagesContainer.appendChild(messageDiv);
+      });
+    }
+
+    function selectChatroom(chatroom) {
+      currentChatroom = chatroom;
+      chatTitle.textContent = chatroom.name;
+      renderChatrooms();
+      renderMessages();
+    }
+
+    function sendMessage() {
+      if (!currentChatroom || !messageInput.value.trim()) return;
+      currentChatroom.messages.push(messageInput.value);
+      messageInput.value = '';
+      renderMessages();
+    }
+
+    sendButton.onclick = sendMessage;
+
+    renderChatrooms();
+  </script>
+</body>
+</html>
