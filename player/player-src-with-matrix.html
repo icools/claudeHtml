@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>超酷炫 字幕 + 音訊播放 + 3D Matrix 特效</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: black;
+      color: #0f0;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    /* 容器：選擇檔案 + 按鈕 + 字幕區域 */
+    #container {
+      position: relative;
+      width: 80%;
+      max-width: 800px;
+      margin: auto;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid #0f0;
+      border-radius: 1rem;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+      z-index: 1;
+    }
+
+    h1 {
+      text-align: center;
+      
+      font-size: 1.5rem;
+      text-shadow: 0 0 5px #0f0;
+    }
+
+    #fileInputs {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    #fileInputs label {
+      display: inline-block;
+      margin-bottom: 0.5rem;
+    }
+
+    #fileInputs input[type="file"] {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid #0f0;
+      color: #0f0;
+      padding: 0.5rem;
+      cursor: pointer;
+      border-radius: 0.5rem;
+    }
+
+    #startButton {
+      margin: 1rem 0;
+      padding: 0.75rem 1.5rem;
+      font-size: 1.2rem;
+      color: #0f0;
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #0f0;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    #startButton:hover {
+      background: #0f0;
+      color: #000;
+    }
+
+    /* 字幕顯示區域 */
+    #subtitleDisplay {
+      margin-top: 1rem;
+      min-height: 2rem;
+      font-size: 2rem; /* 字幕默認更大 */
+      text-align: center;
+      border-top: 1px solid #0f0;
+      padding-top: 1rem;
+    }
+
+    /* 漂亮的字字幕動態 */
+    .subtitleLine {
+      animation: subtitleAnim 1.5s forwards;
+      position: relative;
+      display: inline-block;
+      opacity: 0;
+      font-size: 3rem; /* 增加字幕字體大小 */
+    }
+
+    @keyframes subtitleAnim {
+      0% {
+        transform: translateY(20px) scale(0.9);
+        opacity: 0;
+      }
+      50% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+    }
+
+    /* 背景 Matrix Canvas */
+    #matrixCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    /* 隱藏容器樣式 */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="matrixCanvas"></canvas>
+  <div id="subtitleDisplay"></div>
+  <div id="container">
+    
+    <h1>讓字幕有強烈科幻感 + 播放音訊</h1>
+    
+    <div id="fileInputs">
+      <div>
+        <label for="audioFile">選擇音訊檔案：</label>
+        <input type="file" id="audioFile" accept="audio/*" />
+      </div>
+      <div>
+        <label for="srtFile">選擇 SRT 字幕檔案：</label>
+        <input type="file" id="srtFile" accept=".srt" />
+      </div>
+    </div>
+    <button id="startButton">開始吧！</button>
+    
+  </div>
+
+  <script>
+    // ========== Matrix Rain 3D ===========
+    const canvas = document.getElementById('matrixCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 畫布尺寸
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // 參數設置
+    const fontSize = 18;
+    let columns, drops;
+    const chars = 'アカサタナハマヤラワ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ가나다라마바사아자차카타파하한글一二三四五六七八九十베트남语ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    let animationId;
+
+    function initMatrix() {
+      columns = Math.floor(canvas.width / fontSize);
+      drops = [];
+      for (let i = 0; i < columns; i++) {
+        drops[i] = {
+          y: Math.random() * canvas.height,
+          z: Math.random() * 10 + 1 // 1~10
+        };
+      }
+    }
+
+    function drawMatrix() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < drops.length; i++) {
+        const drop = drops[i];
+        const currFontSize = fontSize * (drop.z / 10);
+        ctx.font = `${currFontSize}px monospace`;
+
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+        gradient.addColorStop(0, `rgba(0, 255, 0, ${drop.z / 10})`);
+        gradient.addColorStop(0.5, `rgba(0, 255, 255, ${drop.z / 10})`);
+        gradient.addColorStop(1, `rgba(255, 0, 255, ${drop.z / 10})`);
+        ctx.fillStyle = gradient;
+
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        const x = i * fontSize;
+        const offsetX = (Math.sin(drop.y / 100) * drop.z) / 2;
+
+        ctx.fillText(char, x + offsetX, drop.y);
+        drop.y += fontSize * (drop.z / 10);
+
+        if (drop.y > canvas.height) {
+          drop.y = 0;
+          drop.z = Math.random() * 10 + 1;
+        }
+      }
+
+      animationId = requestAnimationFrame(drawMatrix);
+    }
+
+    // ========== SRT + Audio 播放 ===========
+    let audioElement;
+    let subtitles = [];
+    let currentSubtitleIndex = -1;
+    let isPlaying = false;
+
+    const audioFileInput = document.getElementById('audioFile');
+    const srtFileInput = document.getElementById('srtFile');
+    const subtitleDisplay = document.getElementById('subtitleDisplay');
+    const startButton = document.getElementById('startButton');
+    const container = document.getElementById('container');
+
+    // 解析 SRT
+    function parseSRT(srtText) {
+      const srtEntries = srtText.split(/\n\s*\n/);
+      const result = [];
+
+      srtEntries.forEach(entry => {
+        const lines = entry.split('\n');
+        if (lines.length >= 3) {
+          const timeLine = lines[1];
+          const textLines = lines.slice(2).join('\n');
+          const timeMatch = timeLine.match(/(\d{2}):(\d{2}):(\d{2}),(\d{3}) --> (\d{2}):(\d{2}):(\d{2}),(\d{3})/);
+          if (timeMatch) {
+            const start = parseInt(timeMatch[1]) * 3600 + parseInt(timeMatch[2]) * 60 + parseInt(timeMatch[3]) + parseInt(timeMatch[4]) / 1000;
+            const end = parseInt(timeMatch[5]) * 3600 + parseInt(timeMatch[6]) * 60 + parseInt(timeMatch[7]) + parseInt(timeMatch[8]) / 1000;
+            result.push({ start, end, text: textLines });
+          }
+        }
+      });
+      return result;
+    }
+
+    // 顯示字幕
+    function showSubtitle(text) {
+      subtitleDisplay.innerHTML = '';
+      if (text) {
+        const lineSpan = document.createElement('span');
+        lineSpan.classList.add('subtitleLine');
+        lineSpan.innerHTML = text;
+        subtitleDisplay.appendChild(lineSpan);
+      }
+    }
+
+    function updateSubtitle() {
+      if (!audioElement) return;
+      const currentTime = audioElement.currentTime;
+      const currentSub = subtitles.find(
+        s => currentTime >= s.start && currentTime <= s.end
+      );
+      if (currentSub) {
+        // 如果找到符合時間的字幕
+        if (currentSub !== subtitles[currentSubtitleIndex]) {
+          currentSubtitleIndex = subtitles.indexOf(currentSub);
+          showSubtitle(currentSub.text);
+        }
+      } else {
+        showSubtitle('');
+      }
+      if (isPlaying) {
+        requestAnimationFrame(updateSubtitle);
+      }
+    }
+
+    startButton.addEventListener('click', () => {
+      const audioFile = audioFileInput.files[0];
+      const srtFile = srtFileInput.files[0];
+
+      if (!audioFile || !srtFile) {
+        alert('請先選擇音訊和 SRT 字幕檔案啊喂！');
+        return;
+      }
+
+      // 隱藏上傳介面
+      container.classList.add('hidden');
+
+      // 停止舊的 audio
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.remove();
+      }
+
+      // 讀取字幕檔
+      const srtReader = new FileReader();
+      srtReader.onload = e => {
+        subtitles = parseSRT(e.target.result);
+      };
+      srtReader.readAsText(srtFile);
+
+      // 新的 audio
+      audioElement = new Audio(URL.createObjectURL(audioFile));
+      audioElement.addEventListener('play', () => {
+        isPlaying = true;
+        currentSubtitleIndex = -1;
+        requestAnimationFrame(updateSubtitle);
+      });
+      audioElement.addEventListener('pause', () => {
+        isPlaying = false;
+      });
+      audioElement.addEventListener('ended', () => {
+        isPlaying = false;
+        showSubtitle('');
+      });
+      audioElement.play();
+
+      // 開始超帥氣的 Matrix!
+      initMatrix();
+      cancelAnimationFrame(animationId);
+      drawMatrix();
+    });
+  </script>
+</body>
+</html>
