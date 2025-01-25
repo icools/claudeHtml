@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <title>Responsive Laser City</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      width: 90vw !important;
+      height: 90vh !important;
+    }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // ================= 核心模型数据 =================
+    const rhombiVertices = [ /* 原始顶点数据 */ ];
+    const rhombiFaces = [ /* 原始面数据 */ ];
+    // ======================== 数据结束 ========================
+
+    let scene, camera, renderer;
+    let city;
+    let baseWidth, baseHeight;
+
+    class ResponsiveCity {
+      constructor() {
+        this.cityGroup = new THREE.Group();
+        this.gridSize = 300;
+        this.buildingSpacing = 20;
+      }
+
+      generateBuildings() {
+        const buildings = new THREE.Group();
+        const gridCells = this.gridSize / this.buildingSpacing;
+        
+        for(let x = -this.gridSize/2; x < this.gridSize/2; x += this.buildingSpacing) {
+          for(let z = -this.gridSize/2; z < this.gridSize/2; z += this.buildingSpacing) {
+            if(Math.random() > 0.6) {
+              const geometry = this.createBuilding(x, z);
+              const material = this.createMaterial();
+              buildings.add(new THREE.LineSegments(geometry, material));
+            }
+          }
+        }
+        return buildings;
+      }
+
+      createBuilding(x, z) {
+        const geometry = new THREE.BufferGeometry();
+        const height = 30 + Math.random() * 70;
+        const segments = 8 + Math.floor(Math.random() * 6);
+        
+        const vertices = [];
+        for(let i = 0; i < segments; i++) {
+          const angle = (i / segments) * Math.PI * 2;
+          const radius = 3 + Math.random() * 5;
+          
+          vertices.push(
+            x + radius * Math.cos(angle), 0, z + radius * Math.sin(angle),
+            x + radius * Math.cos(angle), height, z + radius * Math.sin(angle)
+          );
+          
+          if(i > 0) {
+            vertices.push(
+              x + radius * Math.cos(angle), height * 0.8, z + radius * Math.sin(angle),
+              x + radius * Math.cos(angle - Math.PI*2/segments), height * 0.8, z + radius * Math.sin(angle - Math.PI*2/segments)
+            );
+          }
+        }
+        
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        return geometry;
+      }
+
+      createMaterial() {
+        return new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.8,
+          linewidth: 1
+        });
+      }
+
+      build() {
+        this.cityGroup.add(this.generateBuildings());
+        return this.cityGroup;
+      }
+    }
+
+    function init() {
+      // 计算基础尺寸
+      baseWidth = window.innerWidth * 0.9;
+      baseHeight = window.innerHeight * 0.9;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x000000);
+
+      // 自适应相机设置
+      camera = new THREE.PerspectiveCamera(
+        45,
+        baseWidth / baseHeight,
+        1,
+        2000
+      );
+      updateCameraPosition();
+
+      // 渲染器配置
+      renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        powerPreference: "high-performance"
+      });
+      updateRendererSize();
+      document.body.appendChild(renderer.domElement);
+
+      // 构建城市
+      const cityBuilder = new ResponsiveCity();
+      city = cityBuilder.build();
+      scene.add(city);
+
+      // 灯光设置
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+      scene.add(ambientLight);
+
+      animate();
+    }
+
+    function updateCameraPosition() {
+      // 根据窗口比例动态调整相机位置
+      const aspect = baseWidth / baseHeight;
+      const distance = aspect > 1 ? 500 : 600;
+      camera.position.set(0, 400, distance);
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+    }
+
+    function updateRendererSize() {
+      // 更新渲染器尺寸并保持像素比例
+      baseWidth = window.innerWidth * 0.9;
+      baseHeight = window.innerHeight * 0.9;
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(baseWidth, baseHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 动态效果
+      city.rotation.y += 0.001;
+      city.children[0].children.forEach(building => {
+        building.material.opacity = 0.7 + Math.sin(Date.now()*0.001) * 0.1;
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    // 智能窗口调整响应
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        updateRendererSize();
+        camera.aspect = baseWidth / baseHeight;
+        updateCameraPosition();
+      }, 100);
+    });
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <title>Rhombicosidodecahedron Projection</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      width: 90vw !important;
+      height: 90vh !important;
+    }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // ================= Rhombicosidodecahedron数据 =================
+    const rhombiVertices = [
+      -0.0000, -0.0000, -2.11803, 0.0000, -0.0000,  2.11803,
+      -0.0000, -2.11803,  0.0000, -0.0000,  2.11803,  0.0000,
+      -1.80902, -0.65451, -1.30902, -1.80902, -0.65451,  1.30902,
+      -1.80902,  0.65451, -1.30902, -1.80902,  0.65451,  1.30902,
+      1.80902,  -0.65451, -1.30902, 1.80902,  -0.65451,  1.30902,
+      1.80902,   0.65451, -1.30902, 1.80902,   0.65451,  1.30902,
+      -1.30902, -0.0000,  -1.80902, -1.30902, -0.0000,   1.80902,
+      1.30902,  -0.0000,  -1.80902, 1.30902,  -0.0000,   1.80902,
+      -1.30902, -1.80902,  0.0000, -1.30902,  1.80902,  0.0000,
+      1.30902,  -1.80902,  0.0000, 1.30902,   1.80902,  0.0000,
+      -0.65451, -1.30902, -1.80902, -0.65451, -1.30902,  1.80902,
+      -0.65451,  1.30902, -1.80902, -0.65451,  1.30902,  1.80902,
+      0.65451,  -1.30902, -1.80902, 0.65451,  -1.30902,  1.80902,
+      0.65451,   1.30902, -1.80902, 0.65451,   1.30902,  1.80902,
+      -1.80902, -1.30902, -0.65451, -1.80902, -1.30902,  0.65451,
+      -1.80902,  1.30902, -0.65451, -1.80902,  1.30902,  0.65451,
+      1.80902,  -1.30902, -0.65451, 1.80902,  -1.30902,  0.65451,
+      1.80902,   1.30902, -0.65451, 1.80902,   1.30902,  0.65451,
+      -0.65451, -0.0000, -1.30902, -0.65451, -0.0000,  1.30902,
+      0.65451,   0.0000, -1.30902, 0.65451,   0.0000,  1.30902,
+      -1.30902, -0.65451, -0.0000, -1.30902,  0.65451, -0.0000,
+      1.30902,  -0.65451, -0.0000, 1.30902,   0.65451, -0.0000,
+      -0.0000, -1.30902, -0.65451, -0.0000, -1.30902,  0.65451,
+      0.0000,    1.30902, -0.65451, 0.0000,    1.30902,  0.65451,
+      -0.65451, -0.65451, -1.30902, -0.65451, -0.65451,  1.30902,
+      -0.65451,  0.65451, -1.30902, -0.65451,  0.65451,  1.30902,
+      0.65451,  -0.65451, -1.30902, 0.65451,  -0.65451,  1.30902,
+      0.65451,   0.65451, -1.30902, 0.65451,   0.65451,  1.30902,
+      -0.0000, -0.65451, -1.80902, -0.0000, -0.65451,  1.80902,
+      0.0000,    0.65451, -1.80902, 0.0000,    0.65451,  1.80902
+    ];
+
+    const rhombiFaces = [
+      0,36,20,36,48,20,48,54,20,54,28,20,28,4,20,0,20,4,0,4,12,12,34,0,
+      34,2,0,48,36,32,36,8,32,8,24,32,54,48,44,48,32,44,
+      32,24,44,28,54,40,54,44,40,44,24,40,4,28,16,28,40,16,
+      40,24,16,0,2,38,2,21,38,21,10,38,10,34,38,34,12,38,
+      12,4,38,4,12,38,36,0,33,0,12,33,12,22,33,22,9,33,
+      9,2,33,2,0,33,48,54,46,54,34,46,34,10,46,10,8,46,
+      8,36,46,36,48,46,28,4,37,4,16,37,16,25,37,25,9,37,
+      9,12,37,12,28,37,24,8,43,8,10,43,10,21,43,21,5,43,
+      5,16,43,16,24,43,32,24,42,24,16,42,16,5,42,5,1,42,
+      1,13,42,13,32,42,44,32,47,32,13,47,13,3,47,3,22,47,
+      22,12,47,12,44,47,40,44,41,44,12,41,12,9,41,9,25,41,
+      25,17,41,17,40,41,54,28,45,28,12,45,12,9,45,9,22,45,
+      22,3,45,3,34,45,34,54,45,2,9,31,9,22,31,22,3,31,
+      3,18,31,18,21,31,21,2,31,36,8,30,8,10,30,10,21,30,
+      21,18,30,18,7,30,7,36,30,48,32,35,32,13,35,13,1,35,
+      1,19,35,19,34,35,34,48,35,54,44,39,44,12,39,12,4,39,
+      4,20,39,20,6,39,6,54,39,28,40,29,40,24,29,24,16,29,
+      16,25,29,25,11,29,11,28,29,2,34,9,0,38,4,36,33,0,
+      48,46,36,54,45,34,28,37,4,24,43,8,32,42,24,44,47,12,
+      40,41,44,21,43,5,16,29,25,10,46,8,1,42,13,3,31,18,
+      7,30,18,6,39,20,11,29,25,23,49,15,49,53,15,53,27,15,
+      27,26,15,26,14,15,14,23,15,55,23,50,23,14,50,14,37,50,
+      37,9,50,9,31,50,31,52,50,52,55,50,57,49,51,49,23,51,
+      23,55,51,55,56,51,56,53,51,53,49,51,59,27,58,27,53,58,
+      53,56,58,56,26,58,26,27,58,15,51,23,15,49,23,59,58,17,
+      17,25,11,57,51,29,29,11,57,55,52,40,40,17,55,52,31,30,
+      30,7,52,56,55,41,41,17,56,26,56,41,25,57,11,57,29,41,
+      41,56,57,52,7,30,52,30,40,40,52,30,58,26,41,58,41,17,
+      17,58,41
+    ];
+
+    let scene, camera, renderer;
+    let rhombiMesh, wireframe;
+    let baseWidth, baseHeight;
+
+    function init() {
+      // 计算基础尺寸
+      baseWidth = window.innerWidth * 0.9;
+      baseHeight = window.innerHeight * 0.9;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x000000);
+
+      // 自适应相机
+      camera = new THREE.PerspectiveCamera(45, baseWidth / baseHeight, 1, 1000);
+      updateCameraPosition();
+
+      // 渲染器配置
+      renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        powerPreference: "high-performance"
+      });
+      updateRendererSize();
+      document.body.appendChild(renderer.domElement);
+
+      // 创建Rhombicosidodecahedron
+      createGeometry();
+
+      // 灯光
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+      scene.add(ambientLight);
+
+      animate();
+    }
+
+    function createGeometry() {
+      const geometry = new THREE.PolyhedronGeometry(rhombiVertices, rhombiFaces, 3, 0);
+      
+      // 渐变线框材质
+      const wireframeMaterial = new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.9,
+        linewidth: 2
+      });
+
+      // 主線框
+      wireframe = new THREE.LineSegments(
+        new THREE.WireframeGeometry(geometry),
+        wireframeMaterial
+      );
+      
+      // 添加动态颜色效果
+      geometry.computeBoundingSphere();
+      const center = geometry.boundingSphere.center;
+      
+      geometry.attributes.color = new THREE.BufferAttribute(
+        new Float32Array(geometry.attributes.position.count * 3), 3
+      );
+
+      for(let i = 0; i < geometry.attributes.position.count; i++) {
+        const x = geometry.attributes.position.getX(i);
+        const y = geometry.attributes.position.getY(i);
+        const z = geometry.attributes.position.getZ(i);
+        const distance = Math.sqrt(
+          (x - center.x)**2 + 
+          (y - center.y)**2 + 
+          (z - center.z)**2
+        );
+        
+        const intensity = 0.7 + (distance / 4) * 0.3;
+        geometry.attributes.color.setXYZ(i, intensity, intensity, intensity);
+      }
+
+      const material = new THREE.MeshBasicMaterial({
+        vertexColors: true,
+        wireframe: false,
+        transparent: true,
+        opacity: 0.3
+      });
+
+      rhombiMesh = new THREE.Mesh(geometry, material);
+      scene.add(rhombiMesh);
+      scene.add(wireframe);
+    }
+
+    function updateCameraPosition() {
+      const aspect = baseWidth / baseHeight;
+      const distance = aspect > 1 ? 8 : 10;
+      camera.position.set(distance, distance, distance);
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+    }
+
+    function updateRendererSize() {
+      baseWidth = window.innerWidth * 0.9;
+      baseHeight = window.innerHeight * 0.9;
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(baseWidth, baseHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      // 动态旋转
+      rhombiMesh.rotation.x += 0.005;
+      rhombiMesh.rotation.y += 0.003;
+      wireframe.rotation.copy(rhombiMesh.rotation);
+
+      // 动态渐变效果
+      const time = Date.now() * 0.001;
+      wireframe.material.opacity = 0.8 + Math.sin(time) * 0.1;
+      rhombiMesh.material.opacity = 0.3 + Math.cos(time * 0.5) * 0.1;
+
+      renderer.render(scene, camera);
+    }
+
+    // 响应式处理
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        updateRendererSize();
+        camera.aspect = baseWidth / baseHeight;
+        updateCameraPosition();
+      }, 100);
+    });
+
+    init();
+  </script>
+</body>
+</html>
