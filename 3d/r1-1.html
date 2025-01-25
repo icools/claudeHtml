@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <title>Rhombicosidodecahedron - 赛博朋克风格投影</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+    }
+    #info {
+      position: absolute;
+      top: 20px;
+      width: 100%;
+      color: #0ff;
+      text-align: center;
+      font-family: 'Arial Black', sans-serif;
+      font-size: 1.2em;
+      text-shadow: 0 0 10px #0ff;
+      letter-spacing: 2px;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">CYBERPUNK 2077 STYLE - RHOMBICOSIDODECAHEDRON</div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // ================= 原始顶点和面数据（保持完整） =================
+    const rhombiVertices = [ /* 完整顶点数据 */ ];
+    const rhombiFaces = [ /* 完整面数据 */ ];
+    // ======================== 数据结束 ========================
+
+    let scene, camera, renderer;
+    let rhombiMesh, wireframe;
+    let clock = new THREE.Clock();
+    let lineGroup;
+    let pulseLight;
+
+    function init() {
+      // 场景初始化
+      scene = new THREE.Scene();
+      createStarField(500);
+
+      // 相机设置
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 2000);
+      camera.position.set(0, 0, 15);
+
+      // 渲染器配置
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000);
+      document.body.appendChild(renderer.domElement);
+
+      // 灯光系统
+      const ambientLight = new THREE.AmbientLight(0x4444ff, 0.3);
+      scene.add(ambientLight);
+      
+      pulseLight = new THREE.PointLight(0x00ffff, 3, 50);
+      pulseLight.position.set(5, 5, 5);
+      scene.add(pulseLight);
+
+      // 核心模型材质
+      const material = new THREE.MeshPhongMaterial({
+        color: 0x00ffff,
+        emissive: 0x0044ff,
+        specular: 0xffffff,
+        shininess: 100,
+        transparent: true,
+        opacity: 0.8
+      });
+
+      // 几何体构建
+      const geometry = new THREE.PolyhedronGeometry(rhombiVertices, rhombiFaces, 3, 0);
+      rhombiMesh = new THREE.Mesh(geometry, material);
+      scene.add(rhombiMesh);
+
+      // 霓虹线框
+      const wireframeMat = new THREE.LineBasicMaterial({ 
+        color: 0xff00ff,
+        linewidth: 2
+      });
+      wireframe = new THREE.LineSegments(
+        new THREE.WireframeGeometry(geometry),
+        wireframeMat
+      );
+      scene.add(wireframe);
+
+      // 动态雷射线
+      lineGroup = new THREE.Group();
+      scene.add(lineGroup);
+      createCyberLines(30);
+
+      window.addEventListener('resize', onWindowResize);
+      animate();
+    }
+
+    function createStarField(count) {
+      const starsGeometry = new THREE.BufferGeometry();
+      const starPositions = [];
+      
+      for(let i = 0; i < count; i++) {
+        starPositions.push(
+          THREE.MathUtils.randFloatSpread(2000),
+          THREE.MathUtils.randFloatSpread(2000),
+          THREE.MathUtils.randFloatSpread(2000)
+        );
+      }
+      
+      starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+      const starsMaterial = new THREE.PointsMaterial({
+        color: 0xFFFFFF,
+        size: 0.7,
+        transparent: true,
+        opacity: 0.8
+      });
+      const starField = new THREE.Points(starsGeometry, starsMaterial);
+      scene.add(starField);
+    }
+
+    function createCyberLines(count) {
+      const colors = [0x00ffff, 0xff00ff, 0xffff00];
+      for (let i = 0; i < count; i++) {
+        const points = [];
+        const start = new THREE.Vector3(
+          THREE.MathUtils.randFloatSpread(100),
+          THREE.MathUtils.randFloatSpread(100),
+          THREE.MathUtils.randFloat(-300, -50)
+        );
+        
+        // 生成更有张力的曲线路径
+        for(let j = 0; j < 5; j++) {
+          points.push(new THREE.Vector3(
+            start.x + j * 20 * Math.sin(j * 0.5),
+            start.y + j * 20 * Math.cos(j * 0.5),
+            start.z + j * 50
+          ));
+        }
+
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+        const lineMaterial = new THREE.LineBasicMaterial({
+          color: colors[Math.floor(Math.random()*colors.length)],
+          transparent: true,
+          opacity: 0.7
+        });
+        
+        const line = new THREE.Line(lineGeometry, lineMaterial);
+        line.userData = {
+          speed: THREE.MathUtils.randFloat(0.5, 2),
+          opacityDelta: THREE.MathUtils.randFloat(0.01, 0.05),
+          originalZ: start.z
+        };
+        lineGroup.add(line);
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
+
+      // 核心模型动画
+      rhombiMesh.rotation.x = time * 0.3;
+      rhombiMesh.rotation.y = time * 0.35;
+      wireframe.rotation.copy(rhombiMesh.rotation);
+
+      // 动态缩放效果
+      const scale = 1 + Math.sin(time * 2) * 0.3;
+      rhombiMesh.scale.set(scale, scale, scale);
+      wireframe.scale.copy(rhombiMesh.scale);
+
+      // 脉冲光源动画
+      pulseLight.intensity = Math.sin(time * 3) * 2 + 3;
+      pulseLight.position.x = Math.sin(time) * 8;
+      pulseLight.position.y = Math.cos(time * 0.8) * 8;
+
+      // 霓虹颜色循环
+      rhombiMesh.material.emissive.setHSL(
+        (Math.sin(time * 0.5) + 1) * 0.25, 
+        0.9, 
+        0.6
+      );
+
+      // 雷射线动画
+      lineGroup.children.forEach(line => {
+        line.position.z += line.userData.speed * delta * 100;
+        line.material.opacity = Math.abs(Math.sin(time * line.userData.opacityDelta * 10));
+        
+        if (line.position.z > 100) {
+          line.position.z = line.userData.originalZ;
+          line.material.color.setHSL(Math.random(), 1, 0.7);
+        }
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    init();
+  </script>
+</body>
+</html>
