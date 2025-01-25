@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>3D Moving Cars Scene with Buildings and Matrix Effect</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      color: #0f0;
+    }
+    canvas {
+      display: block;
+    }
+    #matrixCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="matrixCanvas"></canvas>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // Matrix Effect
+    const matrixCanvas = document.getElementById('matrixCanvas');
+    const matrixCtx = matrixCanvas.getContext('2d');
+
+    function resizeMatrixCanvas() {
+      matrixCanvas.width = window.innerWidth;
+      matrixCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeMatrixCanvas);
+    resizeMatrixCanvas();
+
+    const matrixFontSize = 16;
+    const columns = Math.floor(matrixCanvas.width / matrixFontSize);
+    const matrixDrops = Array(columns).fill(0);
+    const matrixChars = 'アカサタナハマヤラワ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+    function drawMatrixEffect() {
+      matrixCtx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+
+      matrixCtx.fillStyle = '#0f0';
+      matrixCtx.font = `${matrixFontSize}px monospace`;
+
+      for (let i = 0; i < matrixDrops.length; i++) {
+        const char = matrixChars.charAt(Math.floor(Math.random() * matrixChars.length));
+        const x = i * matrixFontSize;
+        const y = matrixDrops[i] * matrixFontSize;
+
+        matrixCtx.fillText(char, x, y);
+
+        if (y > matrixCanvas.height && Math.random() > 0.975) {
+          matrixDrops[i] = 0;
+        }
+        matrixDrops[i]++;
+      }
+      requestAnimationFrame(drawMatrixEffect);
+    }
+    drawMatrixEffect();
+
+    // 3D Scene Setup
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 15, 20); // Adjusted camera angle for higher view
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(10, 10, 10);
+    scene.add(directionalLight);
+
+    const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
+    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    const cloudGroup = new THREE.Group();
+    const cloudGeometry = new THREE.SphereGeometry(1, 16, 16);
+    const cloudMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+
+    for (let i = 0; i < 20; i++) {
+      const cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+      cloud.position.set(Math.random() * 200 - 100, Math.random() * 20 + 10, Math.random() * 200 - 100);
+      cloud.scale.setScalar(Math.random() * 3 + 1);
+      cloudGroup.add(cloud);
+    }
+    scene.add(cloudGroup);
+
+    const carGroup = new THREE.Group();
+
+    function createCar(color, size) {
+      const car = new THREE.Group();
+
+      const carBodyGeometry = new THREE.BoxGeometry(2 * size, 1 * size, 1 * size);
+      const carBodyMaterial = new THREE.MeshStandardMaterial({ color });
+      const carBody = new THREE.Mesh(carBodyGeometry, carBodyMaterial);
+      car.add(carBody);
+
+      const wheelGeometry = new THREE.CylinderGeometry(0.4 * size, 0.4 * size, 0.2 * size, 16);
+      const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+      for (let i = -1; i <= 1; i += 2) {
+        for (let j = -1; j <= 1; j += 2) {
+          const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+          wheel.rotation.z = Math.PI / 2;
+          wheel.position.set(i * 0.8 * size, -0.5 * size, j * 0.5 * size);
+          car.add(wheel);
+        }
+      }
+
+      return car;
+    }
+
+    for (let i = 0; i < 20; i++) {
+      const color = Math.random() * 0xffffff;
+      const size = Math.random() * 0.5 + 0.5;
+      const car = createCar(color, size);
+      car.position.set(Math.random() * 100 - 50, 0.5 * size, Math.random() * 100 - 50);
+      carGroup.add(car);
+    }
+
+    scene.add(carGroup);
+
+    const buildingGroup = new THREE.Group();
+
+    function createBuilding() {
+      const buildingGeometry = new THREE.BoxGeometry(
+        Math.random() * 5 + 5,
+        Math.random() * 20 + 10,
+        Math.random() * 5 + 5
+      );
+      const buildingMaterial = new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff });
+      const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+      return building;
+    }
+
+    for (let i = 0; i < 50; i++) {
+      const building = createBuilding();
+      building.position.set(Math.random() * 200 - 100, building.geometry.parameters.height / 2, Math.random() * 200 - 100);
+      buildingGroup.add(building);
+    }
+
+    scene.add(buildingGroup);
+
+    let offset = 0;
+    function animate() {
+      requestAnimationFrame(animate);
+
+      offset += 0.05;
+
+      carGroup.children.forEach((car, index) => {
+        car.position.z += 0.1;
+        if (car.position.z > 50) {
+          car.position.z = -50;
+          car.position.x = Math.random() * 100 - 50;
+          car.position.y = Math.random() * 0.5 + 0.5;
+        }
+        car.rotation.y = Math.sin(offset / 10 + index) * 0.2;
+      });
+
+      cloudGroup.children.forEach((cloud) => {
+        cloud.position.x -= 0.02;
+        if (cloud.position.x < -100) {
+          cloud.position.x = 100;
+        }
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

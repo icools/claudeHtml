@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>城市3D無限地圖示例 - 更多細節與天空Shader</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- 請注意：若要運行此示例，必須在能提供此HTML的網路環境下或local server -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    /////////////////////////////////////////////////////////////////////
+    // 基本設置
+    /////////////////////////////////////////////////////////////////////
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera.position.set(0, 10, 20);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // 環境光 & 方向光
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(50, 50, 50);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    /////////////////////////////////////////////////////////////////////
+    // 自訂天空 Shader
+    /////////////////////////////////////////////////////////////////////
+
+    // 簡單的頂點著色器：讓每個頂點直接傳位置
+    const skyVertexShader = `
+      varying vec3 vPos;
+      void main() {
+        vPos = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+
+    // 簡單的片段著色器：透過vPos.y來漸層顯示天空
+    const skyFragmentShader = `
+      varying vec3 vPos;
+      void main() {
+        // 依據世界的高度對顏色做漸層
+        float h = normalize(vPos).y;
+        // 淺藍到深藍
+        vec3 topColor = vec3(0.0, 0.5, 0.8);
+        vec3 bottomColor = vec3(0.0, 0.0, 0.2);
+        float factor = (h + 1.0) / 2.0;
+        vec3 skyColor = mix(bottomColor, topColor, factor);
+        gl_FragColor = vec4(skyColor, 1.0);
+      }
+    `;
+
+    // 建立天空Mesh
+    const skyGeo = new THREE.SphereGeometry(1200, 32, 32);
+    const skyMat = new THREE.ShaderMaterial({
+      vertexShader: skyVertexShader,
+      fragmentShader: skyFragmentShader,
+      side: THREE.BackSide
+    });
+    const sky = new THREE.Mesh(skyGeo, skyMat);
+    scene.add(sky);
+
+    /////////////////////////////////////////////////////////////////////
+    // "地面"與道路
+    /////////////////////////////////////////////////////////////////////
+
+    // 因應移動，需要動態生成道路區塊
+    const textureLoader = new THREE.TextureLoader();
+    // 草地或柏油紋理
+    const groundTexture = textureLoader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
+    groundTexture.wrapS = THREE.RepeatWrapping;
+    groundTexture.wrapT = THREE.RepeatWrapping;
+
+    // 道路紋理
+    const roadTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/asphalt.jpg');
+    roadTexture.wrapS = THREE.RepeatWrapping;
+    roadTexture.wrapT = THREE.RepeatWrapping;
+
+    const ROAD_WIDTH = 8; // 道路寬度
+    const ROAD_SEGMENT_LENGTH = 40; // 每段道路長度
+    const NUM_ROAD_SEGMENTS = 5;   // 同時存在幾個段落
+
+    // 這裡放所有道路段的群組
+    const roadGroup = new THREE.Group();
+    scene.add(roadGroup);
+
+    function createRoadSegment(xPos) {
+      // 創建一個道路段 (Box)
+      const geo = new THREE.BoxGeometry(ROAD_SEGMENT_LENGTH, 0.2, ROAD_WIDTH);
+      const mat = new THREE.MeshStandardMaterial({ map: roadTexture });
+      // 讓紋理延著長度方向重複
+      roadTexture.repeat.set(ROAD_SEGMENT_LENGTH / 10, ROAD_WIDTH / 10);
+
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(xPos, 0, 0);
+      mesh.receiveShadow = true;
+      return mesh;
+    }
+
+    // 預先產生數個道路段
+    for (let i = 0; i < NUM_ROAD_SEGMENTS; i++) {
+      let segment = createRoadSegment(i * ROAD_SEGMENT_LENGTH);
+      roadGroup.add(segment);
+    }
+
+    /////////////////////////////////////////////////////////////////////
+    // 建築物控制
+    /////////////////////////////////////////////////////////////////////
+
+    // 用chunk概念，每個chunk寬度 = ROAD_SEGMENT_LENGTH
+    // 裡面包含隨機數量的建築物
+
+    const buildingGroup = new THREE.Group();
+    scene.add(buildingGroup);
+
+    let buildingChunks = []; // 存放所有chunk
+
+    function createBuilding() {
+      // 建築寬深都在5~10之間, 高度在10~50
+      const w = Math.random() * 5 + 5;
+      const h = Math.random() * 40 + 10;
+      const d = Math.random() * 5 + 5;
+
+      const geometry = new THREE.BoxGeometry(w, h, d);
+      const color = Math.random() * 0xffffff;
+      const material = new THREE.MeshStandardMaterial({ color });
+
+      const building = new THREE.Mesh(geometry, material);
+      building.castShadow = true;
+      building.receiveShadow = true;
+      building.position.y = h / 2; // 讓底部貼在y=0
+      return building;
+    }
+
+    function createBuildingChunk(chunkIndex) {
+      // 產生一堆建築，沿著 x 範圍 [chunkIndex*ROAD_SEGMENT_LENGTH, (chunkIndex+1)*ROAD_SEGMENT_LENGTH]
+      // z 隨機大範圍 ( -80 ~ -15 ) 以及 ( 15 ~ 80 )，避免和道路重疊
+
+      const chunkGroup = new THREE.Group();
+      chunkGroup.userData.chunkIndex = chunkIndex;
+
+      let chunkStart = chunkIndex * ROAD_SEGMENT_LENGTH;
+
+      for (let i = 0; i < 8; i++) {
+        const b = createBuilding();
+        // x 在這個chunk裡面隨機
+        b.position.x = chunkStart + Math.random() * ROAD_SEGMENT_LENGTH;
+        // 道路寬度是8，故建築要放在道路以外
+        // 讓它有50%的機率在左邊，50%在右邊
+        if (Math.random() < 0.5) {
+          b.position.z = -(Math.random() * 50 + 15);
+        } else {
+          b.position.z = (Math.random() * 50 + 15);
+        }
+        chunkGroup.add(b);
+      }
+      return chunkGroup;
+    }
+
+    // 初始化產生兩個chunk
+    for (let i = 0; i < 2; i++) {
+      const chunk = createBuildingChunk(i);
+      buildingGroup.add(chunk);
+      buildingChunks.push(chunk);
+    }
+
+    /////////////////////////////////////////////////////////////////////
+    // 車輛控制
+    /////////////////////////////////////////////////////////////////////
+
+    const carGroup = new THREE.Group();
+    scene.add(carGroup);
+
+    let cars = [];
+    const MAX_CARS = 20;
+
+    function createCar() {
+      const car = new THREE.Group();
+      // 車身
+      const bodyGeo = new THREE.BoxGeometry(2, 1, 1);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 0.5;
+      car.add(body);
+
+      // 輪子 (4個)
+      const wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+      function createWheel(x, z) {
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(x, 0.2, z);
+        wheel.castShadow = true;
+        return wheel;
+      }
+
+      car.add(createWheel(0.7, 0.5));
+      car.add(createWheel(-0.7, 0.5));
+      car.add(createWheel(0.7, -0.5));
+      car.add(createWheel(-0.7, -0.5));
+
+      car.castShadow = true;
+      return car;
+    }
+
+    function spawnCar() {
+      const car = createCar();
+      // 隨機出生位置在相機前方某個範圍
+      car.position.set(
+        camera.position.x + 30 + Math.random() * 50,
+        0,
+        (Math.random() - 0.5) * (ROAD_WIDTH - 2)
+      );
+      car.userData.speed = 0.3 + Math.random() * 0.3; // 給車子不同速度
+      carGroup.add(car);
+      cars.push(car);
+    }
+
+    // 先產生一些車
+    for (let i = 0; i < 10; i++) {
+      spawnCar();
+    }
+
+    /////////////////////////////////////////////////////////////////////
+    // 主迴圈
+    /////////////////////////////////////////////////////////////////////
+
+    let cameraOffset = 0; // 用於讓相機一直往右
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // 每次更新時相機往右移動
+      const cameraSpeed = 0.2;
+      cameraOffset += cameraSpeed;
+      camera.position.x = cameraOffset;
+      camera.lookAt(camera.position.x + 1, 0, 0);
+
+      // 更新道路位置: 若道路片段過於落後，就搬到最前面
+      roadGroup.children.forEach((seg) => {
+        if (seg.position.x + ROAD_SEGMENT_LENGTH < camera.position.x - 40) {
+          seg.position.x += ROAD_SEGMENT_LENGTH * NUM_ROAD_SEGMENTS;
+        }
+      });
+
+      // 車輛移動 & 回收
+      cars.forEach((car) => {
+        car.position.x += car.userData.speed;
+      });
+      // 若車子落後於相機很遠，就刪掉
+      cars = cars.filter((car) => {
+        if (car.position.x < camera.position.x - 80) {
+          carGroup.remove(car);
+          return false;
+        }
+        return true;
+      });
+      // 隨機產車
+      if (cars.length < MAX_CARS && Math.random() < 0.02) {
+        spawnCar();
+      }
+
+      // 建築物Chunk 處理
+      // 如果最後一個chunk接近相機，就生成下一個chunk
+      const lastChunkIndex = buildingChunks[buildingChunks.length - 1].userData.chunkIndex;
+      const lastChunkEnd = (lastChunkIndex + 1) * ROAD_SEGMENT_LENGTH;
+      if (lastChunkEnd - camera.position.x < 100) {
+        // 生成新Chunk
+        const newChunk = createBuildingChunk(lastChunkIndex + 1);
+        buildingGroup.add(newChunk);
+        buildingChunks.push(newChunk);
+      }
+      // 回收落後的chunk
+      buildingChunks = buildingChunks.filter((chunk) => {
+        const chunkStart = chunk.userData.chunkIndex * ROAD_SEGMENT_LENGTH;
+        // 如果它的結束小於相機-50，就移除
+        if (chunkStart + ROAD_SEGMENT_LENGTH < camera.position.x - 100) {
+          buildingGroup.remove(chunk);
+          return false;
+        }
+        return true;
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>城市3D無限地圖示例</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // 建立場景
+    const scene = new THREE.Scene();
+
+    // 建立相機
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    // 相機位置在 z=20，高度為10，預設朝原點（0,0,0）
+    camera.position.set(0, 10, 20);
+
+    // 建立渲染器
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // 環境光
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    // 方向光
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(50, 50, 50);
+    scene.add(dirLight);
+
+    // 建立地面材質
+    const textureLoader = new THREE.TextureLoader();
+    const roadTexture = textureLoader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
+    roadTexture.wrapS = THREE.RepeatWrapping;
+    roadTexture.wrapT = THREE.RepeatWrapping;
+    roadTexture.repeat.set(100, 100);
+
+    const groundGeo = new THREE.PlaneGeometry(2000, 2000);
+    const groundMat = new THREE.MeshStandardMaterial({ map: roadTexture });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = 0;
+    scene.add(ground);
+
+    // 建立移動中的道路 (多段方式)
+    // 為了視覺效果，我們放置一些道路物件並在update時移動位置，產生無限往右移動的感覺
+    const roadSegments = new THREE.Group();
+
+    // 建立數個長方體模擬車道，並排到x方向前後
+    function createRoadSegment(xPos) {
+      const geo = new THREE.BoxGeometry(40, 0.1, 8);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(xPos, 0.05, 0);
+      return mesh;
+    }
+
+    // 產生多個段落
+    for (let i = 0; i < 5; i++) {
+      let segment = createRoadSegment(i * 40);
+      roadSegments.add(segment);
+    }
+    scene.add(roadSegments);
+
+    // 建築物Group
+    const buildingGroup = new THREE.Group();
+    scene.add(buildingGroup);
+
+    function createBuilding() {
+      // 建築寬深都在5~10之間, 高度在10~40
+      const w = Math.random() * 5 + 5;
+      const h = Math.random() * 30 + 10;
+      const d = Math.random() * 5 + 5;
+
+      const geometry = new THREE.BoxGeometry(w, h, d);
+      const color = Math.random() * 0xffffff;
+      const material = new THREE.MeshStandardMaterial({ color });
+
+      const building = new THREE.Mesh(geometry, material);
+      building.castShadow = true;
+      building.receiveShadow = true;
+
+      return building;
+    }
+
+    // 隨機分佈建築物
+    for (let i = 0; i < 50; i++) {
+      let b = createBuilding();
+      b.position.x = (Math.random() - 0.5) * 200; // x 左右分散
+      b.position.z = (Math.random() - 0.5) * 80;  // z 前後分散
+      b.position.y = b.geometry.parameters.height / 2;
+      buildingGroup.add(b);
+    }
+
+    // 建立車子Group
+    const carGroup = new THREE.Group();
+    scene.add(carGroup);
+
+    function createCar() {
+      const car = new THREE.Group();
+
+      // 車身
+      const bodyGeo = new THREE.BoxGeometry(2, 1, 1);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 0.5;
+      car.add(body);
+
+      // 輪子 (4個)
+      const wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+      function createWheel(x, z) {
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(x, 0.2, z);
+        return wheel;
+      }
+
+      car.add(createWheel(0.7, 0.5));
+      car.add(createWheel(-0.7, 0.5));
+      car.add(createWheel(0.7, -0.5));
+      car.add(createWheel(-0.7, -0.5));
+
+      return car;
+    }
+
+    // 生成多輛車
+    for (let i = 0; i < 12; i++) {
+      let car = createCar();
+      car.position.set(
+        Math.random() * 100 - 50,
+        0,
+        (Math.random() - 0.5) * 6
+      );
+      carGroup.add(car);
+    }
+
+    // 使相機往右持續移動
+    let cameraOffset = 0; // 追蹤相機的x偏移
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // 每次更新時，相機的x位置增加
+      cameraOffset += 0.2; // 移動速度
+      camera.position.x = cameraOffset;
+      // 保持相機看向z=0
+      camera.lookAt(camera.position.x + 1, 0, 0);
+
+      // 更新道路段落位置，創造無限感
+      roadSegments.children.forEach((seg) => {
+        // 判斷是否超出相機左側視窗太遠，就把它丟到前面繼續重複
+        if (seg.position.x < camera.position.x - 60) {
+          seg.position.x += 5 * 40; // 移到最前面
+        }
+      });
+
+      // 車子也在道路上移動
+      carGroup.children.forEach((car) => {
+        car.position.x += 0.4; // 車子往右移
+        // 如果超出相機左側
+        if (car.position.x < camera.position.x - 60) {
+          car.position.x = camera.position.x + 60;
+          car.position.z = (Math.random() - 0.5) * 6; // 重新給車道
+        }
+      });
+
+      // 渲染場景
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // 監聽視窗調整
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
