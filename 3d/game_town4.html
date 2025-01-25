@@ -358,6 +358,14 @@ class GrassTile extends GameObject {
         super(x, y, 64, 64);
         this.variants = ['#90EE90', '#98FB98', '#7CFC00'];
         this.color = this.variants[Math.floor(Math.random() * 3)];
+        // 在建構時就決定好草叢的位置
+        this.grassPositions = [];
+        for(let i = 0; i < 5; i++) {
+            this.grassPositions.push({
+                x: this.x + Math.random() * 64,
+                y: this.y + Math.random() * 64
+            });
+        }
     }
 
     draw(ctx) {
@@ -365,10 +373,8 @@ class GrassTile extends GameObject {
         ctx.fillRect(this.x, this.y, this.width, this.height);
 
         ctx.fillStyle = '#228B22';
-        for(let i = 0; i < 5; i++) {
-            const px = this.x + Math.random() * 64;
-            const py = this.y + Math.random() * 64;
-            ctx.fillRect(px, py, 2, 5);
+        for(let pos of this.grassPositions) {
+            ctx.fillRect(pos.x, pos.y, 2, 5);
         }
     }
 }
