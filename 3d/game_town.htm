@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>精緻2D村莊模擬</title>
+    <style>
+        body {
+            background: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Courier New', monospace;
+        }
+        canvas {
+            border: 3px solid #654321;
+            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+        #dialogLog {
+            width: 800px;
+            height: 120px;
+            background: rgba(255,255,255,0.9);
+            border: 2px solid #654321;
+            border-radius: 5px;
+            margin-top: 20px;
+            padding: 15px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <h1>村莊物語</h1>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="dialogLog"></div>
+
+<script>
+class GameObject {
+    constructor(x, y, width, height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+
+    draw(ctx) {
+        // 基礎繪製方法 (被子類覆蓋)
+    }
+
+    checkCollision(other) {
+        return this.x < other.x + other.width &&
+               this.x + this.width > other.x &&
+               this.y < other.y + other.height &&
+               this.y + this.height > other.y;
+    }
+}
+
+class Character extends GameObject {
+    constructor(x, y, name, role) {
+        super(x, y, 32, 48);
+        this.name = name;
+        this.role = role;
+        this.speed = 2;
+        this.direction = { x: 0, y: 0 };
+        this.frame = 0;
+        this.animationTimer = 0;
+        this.colors = this.getRoleColors();
+        this.isTalking = false;
+        this.talkStartTime = 0;
+        this.talkDuration = 0;
+    }
+
+    getRoleColors() {
+        const palettes = {
+            '老師': { primary: '#6B8E23', secondary: '#556B2F', hair: '#8B4513' },
+            '醫生': { primary: '#87CEEB', secondary: '#4682B4', hair: '#F5DEB3' },
+            '藥師': { primary: '#FFB6C1', secondary: '#FF69B4', hair: '#4B0082' }
+        };
+        return palettes[this.role] || { primary: '#666', secondary: '#999' };
+    }
+
+    draw(ctx) {
+        // 身體
+        ctx.fillStyle = this.colors.primary;
+        ctx.fillRect(this.x + 8, this.y + 24, 16, 24);
+        
+        // 頭部
+        ctx.fillStyle = '#FFE4C4';
+        ctx.beginPath();
+        ctx.arc(this.x + 16, this.y + 20, 12, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 頭髮
+        ctx.fillStyle = this.colors.hair;
+        ctx.beginPath();
+        ctx.arc(this.x + 16, this.y + 16, 12, 0, Math.PI);
+        ctx.fill();
+        
+        // 職業標誌
+        this.drawRoleSymbol(ctx);
+        
+        // 名字標籤
+        ctx.fillStyle = '#000';
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.name, this.x + 16, this.y - 5);
+    }
+
+    drawRoleSymbol(ctx) {
+        ctx.fillStyle = this.colors.secondary;
+        switch(this.role) {
+            case '老師':
+                // 書本
+                ctx.fillRect(this.x + 12, this.y + 32, 8, 6);
+                ctx.fillStyle = '#FFF';
+                ctx.fillRect(this.x + 13, this.y + 33, 6, 4);
+                break;
+            case '醫生':
+                // 十字
+                ctx.fillRect(this.x + 14, this.y + 30, 4, 12);
+                ctx.fillRect(this.x + 10, this.y + 34, 12, 4);
+                break;
+            case '藥師':
+                // 藥瓶
+                ctx.beginPath();
+                ctx.rect(this.x + 12, this.y + 30, 8, 12);
+                ctx.rect(this.x + 14, this.y + 28, 4, 2);
+                ctx.fill();
+                break;
+        }
+    }
+
+    move() {
+        if(this.isTalking) return;
+        this.x += this.direction.x * this.speed;
+        this.y += this.direction.y * this.speed;
+        
+        // 邊界檢查
+        this.x = Math.max(0, Math.min(canvas.width - this.width, this.x));
+        this.y = Math.max(0, Math.min(canvas.height - this.height, this.y));
+    }
+
+    setRandomDirection() {
+        if(Math.random() < 0.02) {
+            this.direction.x = Math.random() * 2 - 1;
+            this.direction.y = Math.random() * 2 - 1;
+        }
+    }
+}
+
+class Building extends GameObject {
+    constructor(x, y, type) {
+        super(x, y, 120, 160);
+        this.type = type;
+        this.colors = this.getBuildingColors();
+    }
+
+    getBuildingColors() {
+        return {
+            roof: '#8B0000',
+            wall: '#DEB887',
+            door: '#8B4513',
+            window: '#FFD700'
+        };
+    }
+
+    draw(ctx) {
+        // 主體
+        ctx.fillStyle = this.colors.wall;
+        ctx.fillRect(this.x, this.y + 40, this.width, this.height - 40);
+        
+        // 屋頂
+        ctx.fillStyle = this.colors.roof;
+        ctx.beginPath();
+        ctx.moveTo(this.x - 10, this.y + 40);
+        ctx.lineTo(this.x + this.width/2, this.y);
+        ctx.lineTo(this.x + this.width + 10, this.y + 40);
+        ctx.fill();
+        
+        // 門窗
+        ctx.fillStyle = this.colors.door;
+        ctx.fillRect(this.x + 50, this.y + 100, 30, 60);
+        
+        ctx.fillStyle = this.colors.window;
+        ctx.fillRect(this.x + 20, this.y + 80, 30, 30);
+        ctx.fillRect(this.x + 70, this.y + 80, 30, 30);
+        
+        // 招牌
+        ctx.fillStyle = '#FFF';
+        ctx.font = '14px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.type, this.x + this.width/2, this.y + 140);
+    }
+}
+
+class GrassTile extends GameObject {
+    constructor(x, y) {
+        super(x, y, 64, 64);
+        this.variants = ['#90EE90', '#98FB98', '#7CFC00'];
+        this.color = this.variants[Math.floor(Math.random() * 3)];
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        
+        // 添加草地細節
+        ctx.fillStyle = '#228B22';
+        for(let i = 0; i < 5; i++) {
+            const px = this.x + Math.random() * 64;
+            const py = this.y + Math.random() * 64;
+            ctx.fillRect(px, py, 2, 5);
+        }
+    }
+}
+
+// 初始化遊戲
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const dialogLog = document.getElementById('dialogLog');
+
+// 遊戲物件
+const villagers = [
+    new Character(100, 100, '王老師', '老師'),
+    new Character(300, 200, '李醫生', '醫生'),
+    new Character(500, 300, '陳藥師', '藥師'),
+    new Character(150, 400, '林藍', '老師'),
+    new Character(250, 50, '黃小華', '醫生'),
+    new Character(450, 350, '周偉', '藥師'),
+    new Character(550, 260, '徐玲', '老師'),
+    new Character(650, 180, '吳大山', '醫生')
+];
+
+const buildings = [
+    new Building(200, 150, '學校'),
+    new Building(400, 300, '醫院'),
+    new Building(600, 450, '藥局')
+];
+
+const grassTiles = [];
+for(let x = 0; x < canvas.width; x += 64) {
+    for(let y = 0; y < canvas.height; y += 64) {
+        grassTiles.push(new GrassTile(x, y));
+    }
+}
+
+// 控制玩家角色
+let player = villagers[0];
+
+// 對話系統
+function addDialog(text) {
+    const p = document.createElement('p');
+    p.textContent = text;
+    dialogLog.appendChild(p);
+    if(dialogLog.children.length > 10) dialogLog.removeChild(dialogLog.firstChild);
+    dialogLog.scrollTop = dialogLog.scrollHeight;
+}
+
+// 碰撞檢測與互動
+function checkInteractions() {
+    for(let i = 0; i < villagers.length; i++) {
+        for(let j = i + 1; j < villagers.length; j++) {
+            if(villagers[i].checkCollision(villagers[j])) {
+                if(!villagers[i].isTalking && !villagers[j].isTalking) {
+                    villagers[i].isTalking = villagers[j].isTalking = true;
+                    const randomSeconds = Math.floor(Math.random() * 20) + 20; 
+                    villagers[i].talkDuration = villagers[j].talkDuration = randomSeconds * 1000;
+                    villagers[i].talkStartTime = villagers[j].talkStartTime = Date.now();
+                    addDialog(
+                      villagers[i].name + ' 和 ' + villagers[j].name + 
+                      ' 開始聊天：「今天村裡的故事可真多！」'
+                    );
+                }
+            }
+        }
+    }
+    // 檢查誰應該結束對話
+    villagers.forEach(v => {
+        if(v.isTalking) {
+            const timeSpent = Date.now() - v.talkStartTime;
+            if(timeSpent > v.talkDuration) {
+                v.isTalking = false;
+                addDialog(v.name + '：「再見，下次再聊！」');
+            }
+        }
+    });
+}
+
+// 遊戲循環
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 繪製草地
+    grassTiles.forEach(tile => tile.draw(ctx));
+
+    // 繪製建築
+    buildings.forEach(building => building.draw(ctx));
+
+    // 更新和繪製角色
+    villagers.forEach(villager => {
+        if(villager !== player) {
+            villager.setRandomDirection();
+        }
+        villager.move();
+        villager.draw(ctx);
+    });
+
+    checkInteractions();
+    requestAnimationFrame(gameLoop);
+}
+
+// 控制玩家
+document.addEventListener('keydown', (e) => {
+    switch(e.key) {
+        case 'ArrowUp': player.direction.y = -1; break;
+        case 'ArrowDown': player.direction.y = 1; break;
+        case 'ArrowLeft': player.direction.x = -1; break;
+        case 'ArrowRight': player.direction.x = 1; break;
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    switch(e.key) {
+        case 'ArrowUp':
+        case 'ArrowDown': player.direction.y = 0; break;
+        case 'ArrowLeft':
+        case 'ArrowRight': player.direction.x = 0; break;
+    }
+});
+
+// 開始遊戲
+gameLoop();
+</script>
+</body>
+</html>

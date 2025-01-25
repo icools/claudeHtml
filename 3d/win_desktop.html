@@ -1,0 +1,218 @@
+import React, { useState } from "react";
+
+interface Window {
+  id: string;
+  type: string;
+  title: string;
+}
+
+const win95TitleBar = "bg-[#000080] text-white";
+const win95WindowBorder = "border border-gray-500";
+
+const IconMyComputer: React.FC<{ size?: number }> = ({ size = 48 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 48 48"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect x="8" y="10" width="32" height="20" fill="#C0C0C0" stroke="#000" strokeWidth="1" />
+    <rect x="12" y="14" width="24" height="12" fill="#FFF" stroke="#000" strokeWidth="1" />
+    <rect x="18" y="30" width="12" height="2" fill="#C0C0C0" stroke="#000" strokeWidth="1" />
+    <rect x="16" y="32" width="16" height="4" fill="#808080" stroke="#000" strokeWidth="1" />
+  </svg>
+);
+
+const IconNotepad: React.FC<{ size?: number }> = ({ size = 48 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 48 48"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect x="12" y="8" width="24" height="32" fill="#FFF" stroke="#000" strokeWidth="1" />
+    <line x1="16" y1="12" x2="32" y2="12" stroke="#000" strokeWidth="1" />
+    <line x1="16" y1="16" x2="32" y2="16" stroke="#000" strokeWidth="1" />
+    <line x1="16" y1="20" x2="32" y2="20" stroke="#000" strokeWidth="1" />
+    <line x1="16" y1="24" x2="32" y2="24" stroke="#000" strokeWidth="1" />
+    <line x1="16" y1="28" x2="32" y2="28" stroke="#000" strokeWidth="1" />
+    <line x1="16" y1="32" x2="32" y2="32" stroke="#000" strokeWidth="1" />
+    <line x1="16" y1="36" x2="32" y2="36" stroke="#000" strokeWidth="1" />
+  </svg>
+);
+
+const IconRecycleBin: React.FC<{ size?: number }> = ({ size = 48 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 48 48"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M12 16 L36 16 L34 40 L14 40 L12 16 Z"
+      fill="#C0C0C0"
+      stroke="#000"
+      strokeWidth="1"
+    />
+    <path
+      d="M18 16 L19 11 L29 11 L30 16 Z"
+      fill="#FFFFFF"
+      stroke="#000"
+      strokeWidth="1"
+    />
+  </svg>
+);
+
+const App: React.FC = () => {
+  const [windows, setWindows] = useState<Window[]>([]);
+  const [showStartMenu, setShowStartMenu] = useState(false);
+
+  const openWindow = (type: string) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setWindows((prev) => [
+      ...prev,
+      {
+        id,
+        type,
+        title: getTitleFromType(type),
+      },
+    ]);
+  };
+
+  const closeWindow = (id: string) => {
+    setWindows((prev) => prev.filter((win) => win.id !== id));
+  };
+
+  const renderWindowContent = (type: string) => {
+    switch (type) {
+      case "mycomputer":
+        return (
+          <div className="p-2 text-black">
+            <p>這裡是我的電腦，裡面有：</p>
+            <ul className="list-disc ml-4 mt-2">
+              <li>C:\ (系統磁碟)</li>
+              <li>D:\ (資料磁碟)</li>
+              <li>A:\ (3.5" 磁片)</li>
+            </ul>
+          </div>
+        );
+      case "notepad":
+        return (
+          <div className="p-2 text-black flex flex-col h-full">
+            <p className="mb-2">這是記事本，你可以在這裡編輯文字：</p>
+            <textarea
+              className="flex-1 border border-gray-400 w-full p-1 resize-none"
+              defaultValue="Hello from Win95 Notepad!"
+            />
+          </div>
+        );
+      case "recycle":
+        return (
+          <div className="p-2 text-black">
+            <p>這是資源回收筒，暫時沒啥東西。</p>
+          </div>
+        );
+      default:
+        return (
+          <div className="p-2 text-black">
+            <p>這是一個預設視窗內容。</p>
+          </div>
+        );
+    }
+  };
+
+  const getTitleFromType = (type: string): string => {
+    switch (type) {
+      case "mycomputer":
+        return "My Computer";
+      case "notepad":
+        return "Notepad";
+      case "recycle":
+        return "Recycle Bin";
+      default:
+        return "Window";
+    }
+  };
+
+  return (
+    <div className="h-screen w-screen bg-[#008080] relative font-['MS Sans Serif'] overflow-hidden">
+      <div className="absolute inset-0 bg-[url('/win95-pattern.png')] bg-cover" />
+      <div className="relative w-full h-full">
+        <div
+          className="absolute top-4 left-4 flex flex-col items-center cursor-pointer select-none"
+          onDoubleClick={() => openWindow("mycomputer")}
+        >
+          <IconMyComputer />
+          <span className="text-white text-sm mt-1">My Computer</span>
+        </div>
+        <div
+          className="absolute top-4 left-24 flex flex-col items-center cursor-pointer select-none"
+          onDoubleClick={() => openWindow("notepad")}
+        >
+          <IconNotepad />
+          <span className="text-white text-sm mt-1">Notepad</span>
+        </div>
+        <div
+          className="absolute top-4 left-44 flex flex-col items-center cursor-pointer select-none"
+          onDoubleClick={() => openWindow("recycle")}
+        >
+          <IconRecycleBin />
+          <span className="text-white text-sm mt-1">Recycle Bin</span>
+        </div>
+        {windows.map((win, index) => {
+          const topOffset = 80 + index * 30;
+          const leftOffset = 80 + index * 30;
+          return (
+            <div
+              key={win.id}
+              className={`absolute ${win95WindowBorder} shadow-lg bg-gray-200 w-[500px] h-[300px]`}
+              style={{ top: topOffset, left: leftOffset }}
+            >
+              <div
+                className={`flex justify-between items-center px-2 py-1 border-b border-gray-500 ${win95TitleBar}`}
+              >
+                <span className="font-bold text-sm">{win.title}</span>
+                <button
+                  className="bg-gray-300 border border-gray-600 px-1 py-0 text-black"
+                  onClick={() => closeWindow(win.id)}
+                >
+                  X
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto bg-white p-0 h-[calc(100%-2rem)]">
+                {renderWindowContent(win.type)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="absolute bottom-0 left-0 w-full bg-gray-300 border-t border-gray-500 h-10 flex items-center relative">
+        <button
+          className="bg-gray-300 border-gray-400 px-2 py-1 text-black ml-2"
+          onClick={() => setShowStartMenu((prev) => !prev)}
+        >
+          Start
+        </button>
+        <div className="flex-1 h-full border-l border-gray-500" />
+        <div className="bg-gray-300 px-2 py-1 border-l border-gray-500 text-black mr-2">
+          3:14 PM
+        </div>
+        {showStartMenu && (
+          <div className="absolute bottom-10 left-0 bg-gray-200 border border-gray-500 w-48 p-2 text-black z-50">
+            <div className="hover:bg-blue-600 hover:text-white px-2 py-1 cursor-default">Programs</div>
+            <div className="hover:bg-blue-600 hover:text-white px-2 py-1 cursor-default">Documents</div>
+            <div className="hover:bg-blue-600 hover:text-white px-2 py-1 cursor-default">Settings</div>
+            <div className="hover:bg-blue-600 hover:text-white px-2 py-1 cursor-default">Search</div>
+            <div className="hover:bg-blue-600 hover:text-white px-2 py-1 cursor-default">Help</div>
+            <div className="hover:bg-blue-600 hover:text-white px-2 py-1 cursor-default">Run...</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default App;

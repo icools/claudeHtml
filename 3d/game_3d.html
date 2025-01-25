@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>村莊物語 3D - Three.js 版</title>
+  <!-- 載入 Three.js CDN  -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.min.js"></script>
+  <!-- 載入 OrbitControls (相機控制) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.154.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Microsoft JhengHei', 'Courier New', monospace;
+      background-color: #f0f0f0;
+      overflow: hidden;
+    }
+    #infoPanel {
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: rgba(255,255,255,0.85);
+      padding: 10px 15px;
+      margin: 10px;
+      border: 2px solid #654321;
+      border-radius: 5px;
+      font-size: 14px;
+      pointer-events: none; /* 讓滑鼠點擊事件穿透到下方Canvas */
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+    #dialogLog {
+      width: 300px;
+      height: 200px;
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      background: rgba(255,255,255,0.85);
+      border: 2px solid #654321;
+      border-radius: 5px;
+      overflow-y: auto;
+      padding: 10px;
+      font-size: 14px;
+      line-height: 1.4;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+    #dialogLog p {
+      margin: 5px 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+<div id="infoPanel">
+  <h3>村莊物語 3D - Three.js</h3>
+  <p>
+    滑鼠右鍵或拖曳可旋轉視角，滾輪可縮放視角。<br>
+    共有 8 位角色，會自動到處逛 &amp; 找人聊天。<br>
+    若他們距離夠近，就會進行對話。
+  </p>
+</div>
+
+<div id="dialogLog"></div>
+
+<script>
+/* =============== 參數設置 =============== */
+const ROLES = ['老師', '醫生', '農夫', '廚師', '鐵匠', '商人', '牧師', '藥師'];
+// 角色對話資料 (延續前例)
+const DIALOG_POOL = {
+  '老師': [
+    '最近學生們進步很多呢',
+    '你知道圖書館有新書嗎？',
+    '教育是百年大計啊...',
+    '教學相長真是至理名言'
+  ],
+  '醫生': [
+    '最近感冒的人變多了',
+    '要注意衛生習慣喔',
+    '這個藥方應該有效...',
+    '定期檢查很重要哦'
+  ],
+  '農夫': [
+    '今年收成應該不錯',
+    '需要幫忙採收嗎？',
+    '天氣對作物影響真大',
+    '新鮮蔬菜最健康了'
+  ],
+  '廚師': [
+    '新研發的菜單不錯吧',
+    '食材新鮮最重要',
+    '火候控制是關鍵',
+    '來嚐嚐新料理吧'
+  ],
+  '鐵匠': [
+    '這把劍的材質真不錯',
+    '打鐵要趁熱啊',
+    '工具保養很重要',
+    '訂製武器找我吧'
+  ],
+  '商人': [
+    '最新商品剛到貨',
+    '買多算你便宜',
+    '誠信經營是根本',
+    '稀有商品這裡有'
+  ],
+  '牧師': [
+    '願神祝福你',
+    '心靈平靜很重要',
+    '每週日有禮拜',
+    '懺悔室隨時開放'
+  ],
+  '藥師': [
+    '按時服藥很重要',
+    '這個藥方請收好',
+    '藥材品質有保障',
+    '煎藥方法要注意'
+  ]
+};
+const TALK_RANGE = 10;         // 角色碰撞範圍(接近才會對話)
+const SEEK_RANGE = 60;         // 角色自動尋找他人的範圍
+const CONVERSATION_COOLDOWN = 120; // 2 秒冷卻 (60fps * 2)
+const TALK_TIME_LIMIT = 600;   // 對話維持時長 (約10秒，供示例)
+const MOVE_SPEED = 0.2;        // 角色移動速度
+
+/* =============== Three.js 基本場景設置 =============== */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x88ccff); // 淡藍天色
+
+// 建立相機
+const camera = new THREE.PerspectiveCamera(
+  60, // 視野角度(FOV)
+  window.innerWidth / window.innerHeight, // 宽高比
+  0.1, // 最近可見面
+  1000  // 最遠可見面
+);
+camera.position.set(0, 80, 100); // 從上往下看
+
+// 渲染器
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// OrbitControls (滑鼠操控鏡頭)
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+controls.enablePan = false; // 禁用平移
+controls.update();
+
+// 監聽視窗尺寸調整
+window.addEventListener('resize', onWindowResize, false);
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+/* =============== 加入光源 =============== */
+// 簡單環境光
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+// 方向光 (模擬太陽光)
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(50, 100, 50);
+scene.add(dirLight);
+
+/* =============== 建立地面 =============== */
+const groundGeometry = new THREE.PlaneGeometry(200, 200);
+const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x55aa55 });
+const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+ground.rotation.x = -Math.PI / 2; // 平面要躺下
+ground.receiveShadow = true;
+scene.add(ground);
+
+/* =============== 建築物設置 =============== */
+const buildings = [];
+const BUILDING_INFO = [
+  { x: -50, z: 0, name: '學校', color: 0xffcc88 },
+  { x: 30, z: -30, name: '醫院', color: 0xee8899 },
+  { x: 50, z: 50, name: '藥局', color: 0x88bbff },
+  { x: -30, z: 40, name: '教堂', color: 0xffccff },
+  { x: -80, z: -40, name: '市場', color: 0xccffcc }
+];
+
+BUILDING_INFO.forEach(info => {
+  const bGeo = new THREE.BoxGeometry(15, 15, 15);
+  const bMat = new THREE.MeshLambertMaterial({ color: info.color });
+  const bMesh = new THREE.Mesh(bGeo, bMat);
+
+  bMesh.position.set(info.x, 7.5, info.z); // y=7.5 => 高度的一半
+  scene.add(bMesh);
+
+  // 顯示建築物的名稱 (簡化處理，改用 console 或 UI 呈現皆可)
+  // 這邊僅附加到陣列以便觀察、若需額外管理可再進一步擴充
+  buildings.push({
+    mesh: bMesh,
+    name: info.name
+  });
+});
+
+/* =============== 建立角色類別 =============== */
+class Villager {
+  constructor(name, role, x, z) {
+    this.name = name;
+    this.role = role;
+    this.position = new THREE.Vector3(x, 0, z);
+
+    // Three.js 角色外觀 (用球體 + 圓柱體示例)
+    const headGeo = new THREE.SphereGeometry(1.5, 16, 16);
+    const headMat = new THREE.MeshLambertMaterial({ color: 0xffe0bd });
+    this.headMesh = new THREE.Mesh(headGeo, headMat);
+
+    const bodyGeo = new THREE.CylinderGeometry(1.2, 1.2, 3, 12);
+    // 每個角色給個顏色區分
+    const colorMap = {
+      '老師': 0x6B8E23,
+      '醫生': 0x87CEEB,
+      '農夫': 0xCD853F,
+      '廚師': 0xFF6347,
+      '鐵匠': 0x708090,
+      '商人': 0x9370DB,
+      '牧師': 0xffffff,
+      '藥師': 0xFF69B4
+    };
+    const bodyMat = new THREE.MeshLambertMaterial({
+      color: colorMap[this.role] || 0x999999
+    });
+    this.bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+
+    // 建立一個空的 Group 來裝角色頭與身體
+    this.group = new THREE.Group();
+    // 身體底座放在 y=1.5，頭部 y=3 (剛好在身體上)
+    this.bodyMesh.position.set(0, 1.5, 0);
+    this.headMesh.position.set(0, 3, 0);
+
+    this.group.add(this.bodyMesh);
+    this.group.add(this.headMesh);
+
+    // 給個隨機旋轉
+    this.group.rotation.y = Math.random() * Math.PI * 2;
+    // 放在初始位置
+    this.group.position.set(x, 0, z);
+
+    scene.add(this.group);
+
+    // 移動 & 對話相關
+    this.direction = new THREE.Vector3(
+      (Math.random() * 2 - 1),
+      0,
+      (Math.random() * 2 - 1)
+    ).normalize(); // 初始隨機方向
+    this.isTalking = false;
+    this.talkTarget = null;
+    this.cooldown = 0;       // 結束對話後的冷卻
+    this.talkTimer = 0;
+    this.dialogQueue = [];
+    this.dialogDelay = 0;    // 每行對話延遲
+    this.lastDialogLine = null;
+  }
+
+  update(villagers) {
+    // 若在對話中
+    if (this.isTalking) {
+      this.talkTimer--;
+      if (this.talkTimer <= 0) {
+        this.endConversation();
+      }
+      return;
+    } else {
+      if (this.cooldown > 0) {
+        this.cooldown--;
+      } else {
+        // 試著找最近的人
+        const nearest = this.findNearestVillager(villagers, SEEK_RANGE);
+        if (nearest && !nearest.isTalking) {
+          // 朝最近人前進
+          const dx = nearest.group.position.x - this.group.position.x;
+          const dz = nearest.group.position.z - this.group.position.z;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+
+          if (dist > TALK_RANGE) {
+            // 移動
+            this.direction.set(dx, 0, dz).normalize();
+          } else {
+            // 距離夠近 => 開始對話
+            this.startConversation(nearest);
+          }
+        } else {
+          // 找不到人 => 隨機走動
+          if (Math.random() < 0.002) {
+            this.setRandomDirection();
+          }
+        }
+      }
+    }
+    this.move();
+  }
+
+  // 找最近的村民
+  findNearestVillager(villagers, range) {
+    let minDist = range;
+    let nearestVillager = null;
+    for (let v of villagers) {
+      if (v !== this && !v.isTalking) {
+        const dx = v.group.position.x - this.group.position.x;
+        const dz = v.group.position.z - this.group.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < minDist) {
+          minDist = dist;
+          nearestVillager = v;
+        }
+      }
+    }
+    return nearestVillager;
+  }
+
+  move() {
+    if (!this.isTalking) {
+      // 移動角色
+      this.group.position.x += this.direction.x * MOVE_SPEED;
+      this.group.position.z += this.direction.z * MOVE_SPEED;
+
+      // 偶爾稍微轉動，增加些自然感
+      this.group.rotation.y = Math.atan2(-this.direction.z, this.direction.x);
+
+      // 簡單邊界檢查
+      const limit = 95;
+      if (this.group.position.x < -limit) this.group.position.x = -limit;
+      if (this.group.position.x > limit) this.group.position.x = limit;
+      if (this.group.position.z < -limit) this.group.position.z = -limit;
+      if (this.group.position.z > limit) this.group.position.z = limit;
+    }
+  }
+
+  setRandomDirection() {
+    this.direction.set(
+      (Math.random() * 2 - 1),
+      0,
+      (Math.random() * 2 - 1)
+    ).normalize();
+  }
+
+  startConversation(other) {
+    if (!this.isTalking && !other.isTalking) {
+      this.isTalking = true;
+      other.isTalking = true;
+      this.talkTarget = other;
+      other.talkTarget = this;
+      this.talkTimer = TALK_TIME_LIMIT;
+
+      // 產生對話序列
+      this.dialogQueue = this.generateDialog();
+      other.dialogQueue = other.generateDialog();
+
+      // 雙方先停下
+      this.direction.set(0, 0, 0);
+      other.direction.set(0, 0, 0);
+    }
+  }
+
+  generateDialog() {
+    const lines = [];
+    const roleDialogs = DIALOG_POOL[this.role];
+    // 假如自己的 role 不在 DIALOG_POOL，給個預設
+    const randomText = [
+      '哈囉～今天過得怎樣？',
+      '今天天氣真不錯啊',
+      '來逛逛村莊放鬆一下！',
+      '保持微笑，沒什麼大不了'
+    ];
+    for (let i = 0; i < 5; i++) {
+      const arr = roleDialogs || randomText;
+      lines.push(arr[Math.floor(Math.random() * arr.length)]);
+    }
+    return lines;
+  }
+
+  endConversation() {
+    // 結束對話
+    this.isTalking = false;
+    this.cooldown = CONVERSATION_COOLDOWN;
+
+    if (this.talkTarget) {
+      this.talkTarget.isTalking = false;
+      this.talkTarget.cooldown = CONVERSATION_COOLDOWN;
+      this.talkTarget.talkTarget = null;
+      this.talkTarget.dialogQueue = [];
+      this.talkTarget.lastDialogLine = null;
+    }
+    this.talkTarget = null;
+    this.dialogQueue = [];
+    this.lastDialogLine = null;
+    this.dialogDelay = 0;
+
+    // 對話結束後，隨機走動
+    this.setRandomDirection();
+  }
+}
+
+/* =============== 建立 8 位角色 =============== */
+const villagers = [];
+for (let i = 0; i < ROLES.length; i++) {
+  const role = ROLES[i];
+  const villager = new Villager(
+    role + (i+1),
+    role,
+    (Math.random() * 80) - 40,  // x 初始
+    (Math.random() * 80) - 40   // z 初始
+  );
+  villagers.push(villager);
+}
+
+/* =============== 文字對話窗的管理 =============== */
+const dialogLog = document.getElementById('dialogLog');
+
+function addDialog(text) {
+  const p = document.createElement('p');
+  p.textContent = text;
+  dialogLog.appendChild(p);
+  if (dialogLog.children.length > 15) {
+    dialogLog.removeChild(dialogLog.firstChild);
+  }
+  dialogLog.scrollTop = dialogLog.scrollHeight;
+}
+
+/* =============== 每幾禎發送對話（包括延遲1~3秒） =============== */
+function handleTalking(villager) {
+  if (villager.isTalking) {
+    // 若當前有排隊的對話 & 延遲為 0，則取下一行
+    if (villager.dialogQueue.length > 0 && villager.dialogDelay <= 0) {
+      // 送出對話
+      const line = villager.dialogQueue.shift();
+      villager.lastDialogLine = line;
+
+      // 推到對話紀錄
+      addDialog(`${villager.name}: ${line}`);
+
+      // 將延遲設定為隨機 1~3 秒 (60fps ~ 180fps)
+      villager.dialogDelay = 60 + Math.floor(Math.random() * 121);
+    } else {
+      // 倒數減一
+      if (villager.dialogDelay > 0) {
+        villager.dialogDelay--;
+      }
+    }
+  }
+}
+
+/* =============== 主迴圈 (遊戲邏輯 & 渲染) =============== */
+function animate() {
+  requestAnimationFrame(animate);
+
+  // 更新角色邏輯
+  villagers.forEach(v => {
+    v.update(villagers);
+    handleTalking(v);
+  });
+
+  // 渲染場景
+  renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>

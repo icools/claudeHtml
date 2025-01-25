@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>村莊物語 - 完整版：自動尋找聊天</title>
+    <style>
+        body {
+            background: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Courier New', monospace;
+        }
+        canvas {
+            border: 3px solid #654321;
+            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+        #dialogLog {
+            width: 1200px;
+            height: 120px;
+            background: rgba(255,255,255,0.9);
+            border: 2px solid #654321;
+            border-radius: 5px;
+            margin-top: 20px;
+            padding: 15px;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>村莊物語 - 八人完整版：自動尋找聊天</h1>
+    <canvas id="gameCanvas" width="1200" height="800"></canvas>
+    <div id="dialogLog"></div>
+
+<script>
+// 讓 Canvas2DContext 支援 roundRect，如果不支援可自行改成其他繪製方式
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, width, height, r) {
+        if (width < 2 * r) r = width / 2;
+        if (height < 2 * r) r = height / 2;
+        this.moveTo(x + r, y);
+        this.arcTo(x + width, y, x + width, y + height, r);
+        this.arcTo(x + width, y + height, x, y + height, r);
+        this.arcTo(x, y + height, x, y, r);
+        this.arcTo(x, y, x + width, y, r);
+        this.closePath();
+        return this;
+    };
+}
+
+class GameObject {
+    constructor(x, y, width, height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+
+    draw(ctx) {}
+
+    checkCollision(other) {
+        return (
+            this.x < other.x + other.width &&
+            this.x + this.width > other.x &&
+            this.y < other.y + other.height &&
+            this.y + this.height > other.y
+        );
+    }
+}
+
+class Character extends GameObject {
+    constructor(x, y, name, role) {
+        super(x, y, 32, 48);
+        this.name = name;
+        this.role = role;
+        this.speed = 1.5;
+        this.direction = { x: 0, y: 0 };
+        this.colors = this.getRoleColors();
+        this.isTalking = false;
+        this.talkTarget = null;
+        this.talkTimer = 0;
+        this.currentDialog = [];
+        this.setRandomDirection();
+        // 用於對話泡泡的延遲機制
+        this.lastDialogLine = null; // 正在顯示的對話
+        this.dialogDelay = 0;       // 對話行數延遲倒數
+        // 尋找聊天距離
+        this.seekRange = 200;      // 自動尋找鄰近角色的範圍
+        // 避免剛結束對話就立刻黏住別人，稍作冷卻
+        this.conversationCooldown = 0; // 在 update 中慢慢遞減
+    }
+
+    getRoleColors() {
+        const roles = {
+            '老師': { primary: '#6B8E23', hair: '#8B4513', symbol: '📚' },
+            '醫生': { primary: '#87CEEB', hair: '#F5DEB3', symbol: '🩺' },
+            '農夫': { primary: '#CD853F', hair: '#D2691E', symbol: '🌾' },
+            '廚師': { primary: '#FF6347', hair: '#FFD700', symbol: '🍳' },
+            '鐵匠': { primary: '#708090', hair: '#2F4F4F', symbol: '⚒️' },
+            '商人': { primary: '#9370DB', hair: '#4B0082', symbol: '💰' },
+            '牧師': { primary: '#FFFFFF', hair: '#808080', symbol: '⛪' },
+            '藥師': { primary: '#FF69B4', hair: '#4B0082', symbol: '💊' }
+        };
+        return roles[this.role] || { primary: '#666' };
+    }
+
+    draw(ctx) {
+        // 身體
+        ctx.fillStyle = this.colors.primary;
+        ctx.fillRect(this.x + 8, this.y + 24, 16, 24);
+
+        // 頭部
+        ctx.fillStyle = '#FFE4C4';
+        ctx.beginPath();
+        ctx.arc(this.x + 16, this.y + 20, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 頭髮
+        ctx.fillStyle = this.colors.hair;
+        ctx.beginPath();
+        ctx.arc(this.x + 16, this.y + 16, 12, 0, Math.PI);
+        ctx.fill();
+
+        // 職業符號
+        ctx.font = '20px Arial';
+        ctx.fillStyle = '#000';
+        ctx.fillText(this.colors.symbol, this.x + 10, this.y + 40);
+
+        // 名字標籤
+        ctx.fillStyle = '#000';
+        ctx.font = '12px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.name, this.x + 16, this.y - 5);
+    }
+
+    startConversation(target) {
+        if (!this.isTalking && !target.isTalking) {
+            this.isTalking = true;
+            target.isTalking = true;
+            this.talkTarget = target;
+            target.talkTarget = this;
+            this.talkTimer = 1800; // 30秒(60fps)
+            this.generateDialogSequence();
+            this.direction = { x: 0, y: 0 };
+            target.direction = { x: 0, y: 0 };
+        }
+    }
+
+    generateDialogSequence() {
+        const dialogPool = {
+            '老師': [
+                "最近學生們進步很多呢",
+                "你知道圖書館有新書嗎？",
+                "教育是百年大計啊...",
+                "教學相長真是至理名言"
+            ],
+            '醫生': [
+                "最近感冒的人變多了",
+                "要注意衛生習慣喔",
+                "這個藥方應該有效...",
+                "定期檢查很重要哦"
+            ],
+            '農夫': [
+                "今年收成應該不錯",
+                "需要幫忙採收嗎？",
+                "天氣對作物影響真大",
+                "新鮮蔬菜最健康了"
+            ],
+            '廚師': [
+                "新研發的菜單不錯吧",
+                "食材新鮮最重要",
+                "火候控制是關鍵",
+                "來嚐嚐新料理吧"
+            ],
+            '鐵匠': [
+                "這把劍的材質真不錯",
+                "打鐵要趁熱啊",
+                "工具保養很重要",
+                "訂製武器找我吧"
+            ],
+            '商人': [
+                "最新商品剛到貨",
+                "買多算你便宜",
+                "誠信經營是根本",
+                "稀有商品這裡有"
+            ],
+            '牧師': [
+                "願神祝福你",
+                "心靈平靜很重要",
+                "每週日有禮拜",
+                "懺悔室隨時開放"
+            ],
+            '藥師': [
+                "按時服藥很重要",
+                "這個藥方請收好",
+                "藥材品質有保障",
+                "煎藥方法要注意"
+            ]
+        };
+
+        this.currentDialog = [];
+        for (let i = 0; i < 5; i++) {
+            const roleDialogs = dialogPool[this.role];
+            const targetDialogs = dialogPool[this.talkTarget.role];
+            this.currentDialog.push({
+                speaker: this,
+                text: roleDialogs[Math.floor(Math.random() * roleDialogs.length)]
+            });
+            this.currentDialog.push({
+                speaker: this.talkTarget,
+                text: targetDialogs[Math.floor(Math.random() * targetDialogs.length)]
+            });
+        }
+    }
+
+    update(villagers) {
+        // 降低對話冷卻
+        if (this.conversationCooldown > 0) {
+            this.conversationCooldown--;
+        }
+
+        if (this.isTalking) {
+            this.talkTimer--;
+            if (this.talkTimer <= 0) {
+                this.endConversation();
+            }
+            return;
+        } else {
+            // 如果不在對話，嘗試尋找附近角色
+            if (this.conversationCooldown <= 0) {
+                const nearest = this.findNearestVillager(villagers);
+                if (nearest && !nearest.isTalking) {
+                    // 朝最近的人移動
+                    const dx = nearest.x - this.x;
+                    const dy = nearest.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist > 10) {
+                        // 接近對方
+                        const angle = Math.atan2(dy, dx);
+                        this.direction.x = Math.cos(angle);
+                        this.direction.y = Math.sin(angle);
+                    } else {
+                        // 若距離夠近則開始對話
+                        this.startConversation(nearest);
+                    }
+                } else {
+                    // 沒找到 或 是對方在對話中 就隨機走動
+                    if (Math.random() < 0.01) {
+                        this.setRandomDirection();
+                    }
+                }
+            } else {
+                // 有冷卻，做隨機走動
+                if (Math.random() < 0.01) {
+                    this.setRandomDirection();
+                }
+            }
+        }
+        this.move();
+    }
+
+    findNearestVillager(villagers) {
+        let nearestVillager = null;
+        let minDist = this.seekRange;
+        for (let v of villagers) {
+            if (v !== this && !v.isTalking) {
+                const dx = v.x - this.x;
+                const dy = v.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestVillager = v;
+                }
+            }
+        }
+        return nearestVillager;
+    }
+
+    move() {
+        if (!this.isTalking) {
+            this.x += this.direction.x * this.speed;
+            this.y += this.direction.y * this.speed;
+            this.x = Math.max(0, Math.min(canvas.width - this.width, this.x));
+            this.y = Math.max(0, Math.min(canvas.height - this.height, this.y));
+        }
+    }
+
+    endConversation() {
+        this.isTalking = false;
+        if (this.talkTarget) {
+            this.talkTarget.isTalking = false;
+            this.talkTarget.talkTarget = null;
+            this.talkTarget.conversationCooldown = 120; // 2 秒冷卻
+        }
+        this.talkTarget = null;
+        this.conversationCooldown = 120; // 2 秒冷卻
+
+        this.setRandomDirection();
+        this.currentDialog = [];
+        this.lastDialogLine = null;
+    }
+
+    setRandomDirection() {
+        this.direction.x = Math.random() * 2 - 1;
+        this.direction.y = Math.random() * 2 - 1;
+    }
+}
+
+class Building extends GameObject {
+    constructor(x, y, type) {
+        super(x, y, 120, 160);
+        this.type = type;
+        this.colors = this.getBuildingColors();
+    }
+
+    getBuildingColors() {
+        return {
+            roof: '#8B0000',
+            wall: '#DEB887',
+            door: '#8B4513',
+            window: '#FFD700'
+        };
+    }
+
+    draw(ctx) {
+        // 主體
+        ctx.fillStyle = this.colors.wall;
+        ctx.fillRect(this.x, this.y + 40, this.width, this.height - 40);
+
+        // 屋頂
+        ctx.fillStyle = this.colors.roof;
+        ctx.beginPath();
+        ctx.moveTo(this.x - 10, this.y + 40);
+        ctx.lineTo(this.x + this.width/2, this.y);
+        ctx.lineTo(this.x + this.width + 10, this.y + 40);
+        ctx.fill();
+
+        // 門窗
+        ctx.fillStyle = this.colors.door;
+        ctx.fillRect(this.x + 50, this.y + 100, 30, 60);
+
+        ctx.fillStyle = this.colors.window;
+        ctx.fillRect(this.x + 20, this.y + 80, 30, 30);
+        ctx.fillRect(this.x + 70, this.y + 80, 30, 30);
+
+        // 招牌
+        ctx.fillStyle = '#FFF';
+        ctx.font = '14px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.type, this.x + this.width/2, this.y + 140);
+    }
+}
+
+class GrassTile extends GameObject {
+    constructor(x, y) {
+        super(x, y, 64, 64);
+        this.variants = ['#90EE90', '#98FB98', '#7CFC00'];
+        this.color = this.variants[Math.floor(Math.random() * 3)];
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+
+        ctx.fillStyle = '#228B22';
+        for(let i = 0; i < 5; i++) {
+            const px = this.x + Math.random() * 64;
+            const py = this.y + Math.random() * 64;
+            ctx.fillRect(px, py, 2, 5);
+        }
+    }
+}
+
+// 初始化遊戲
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const dialogLog = document.getElementById('dialogLog');
+
+// 創建8個角色
+const roles = ['老師', '醫生', '農夫', '廚師', '鐵匠', '商人', '牧師', '藥師'];
+const villagers = roles.map((role, i) => 
+    new Character(100 + i*150, 100 + (i%2)*200, `${role}${i+1}`, role)
+);
+
+// 創建建築物
+const buildings = [
+    new Building(200, 150, '學校'),
+    new Building(400, 300, '醫院'),
+    new Building(600, 450, '藥局'),
+    new Building(800, 200, '教堂'),
+    new Building(1000, 350, '市場')
+];
+
+// 創建草地
+const grassTiles = [];
+for(let x = 0; x < canvas.width; x += 64) {
+    for(let y = 0; y < canvas.height; y += 64) {
+        grassTiles.push(new GrassTile(x, y));
+    }
+}
+
+// 對話系統
+function addDialog(text) {
+    const p = document.createElement('p');
+    p.textContent = text;
+    dialogLog.appendChild(p);
+    if(dialogLog.children.length > 10) dialogLog.removeChild(dialogLog.firstChild);
+    dialogLog.scrollTop = dialogLog.scrollHeight;
+}
+
+// 碰撞檢測
+function checkInteractions() {
+    for (let i = 0; i < villagers.length; i++) {
+        for (let j = i+1; j < villagers.length; j++) {
+            const a = villagers[i];
+            const b = villagers[j];
+            if (a.checkCollision(b) && !a.isTalking && !b.isTalking) {
+                a.startConversation(b);
+            }
+        }
+    }
+}
+
+// 對話泡泡繪製，增加每行對話1~3秒的延遲
+function drawSpeechBubble(character) {
+    if (character.isTalking) {
+        // 若當前有排隊的對話，而且延遲歸零，則取下一行
+        if (character.currentDialog.length > 0 && character.dialogDelay <= 0) {
+            const dialog = character.currentDialog.shift();
+            character.lastDialogLine = dialog;
+            // 1~3秒(60fps) => 60~180
+            character.dialogDelay = 60 + Math.floor(Math.random() * 121);
+            addDialog(`${dialog.speaker.name}: ${dialog.text}`);
+        } else {
+            // 尚未到下一行對話
+            if(character.dialogDelay > 0) {
+                character.dialogDelay--;
+            }
+        }
+
+        // 畫出當前對話
+        if (character.lastDialogLine) {
+            const bubbleX = character.lastDialogLine.speaker.x;
+            const bubbleY = character.lastDialogLine.speaker.y - 40;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.strokeStyle = '#000';
+            ctx.beginPath();
+            ctx.roundRect(bubbleX - 50, bubbleY - 20, 200, 40, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#000';
+            ctx.font = '12px Arial';
+            ctx.fillText(character.lastDialogLine.text, bubbleX - 40, bubbleY);
+        }
+    }
+}
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 繪製草地
+    grassTiles.forEach(tile => tile.draw(ctx));
+
+    // 繪製建築
+    buildings.forEach(building => building.draw(ctx));
+
+    // 更新角色
+    villagers.forEach(villager => {
+        villager.update(villagers);
+    });
+
+    // 碰撞檢測 & 對話判斷
+    checkInteractions();
+
+    // 繪製角色 & 對話泡泡
+    villagers.forEach(villager => {
+        villager.draw(ctx);
+        drawSpeechBubble(villager);
+    });
+
+    requestAnimationFrame(gameLoop);
+}
+
+// 玩家控制（可選，第一個角色）
+let player = villagers[0];
+
+document.addEventListener('keydown', (e) => {
+    switch(e.key) {
+        case 'ArrowUp': player.direction.y = -1; break;
+        case 'ArrowDown': player.direction.y = 1; break;
+        case 'ArrowLeft': player.direction.x = -1; break;
+        case 'ArrowRight': player.direction.x = 1; break;
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    switch(e.key) {
+        case 'ArrowUp':
+        case 'ArrowDown': player.direction.y = 0; break;
+        case 'ArrowLeft':
+        case 'ArrowRight': player.direction.x = 0; break;
+    }
+});
+
+// 開始遊戲
+gameLoop();
+</script>
+</body>
+</html>
