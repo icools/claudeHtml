@@ -1,0 +1,17 @@
+{
+    "manifest_version": 3,
+    "name": "Sidebar TTS Sender",
+    "version": "1.0",
+    "description": "將選取的文字傳送到側邊欄 TTS 播放器。",
+    "permissions": [
+      "contextMenus",
+      "activeTab",
+      "sidePanel"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "side_panel": {
+      "default_path": "sidebar.html"
+    }
+  }
