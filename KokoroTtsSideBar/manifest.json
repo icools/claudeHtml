@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "KokorsTTS",
+    "name": "Kokoro-TTS",
     "version": "1.1",
     "description": "將選取的文字傳送到側邊欄 TTS 播放器。",
     "permissions": [

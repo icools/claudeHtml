@@ -4,7 +4,7 @@
 chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
       id: "sendToTTS",
-      title: "KokoroTTS",
+      title: "Kokoro-TTS",
       contexts: ["selection"]
     });
   });
