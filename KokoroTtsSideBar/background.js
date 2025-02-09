@@ -4,7 +4,7 @@
 chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
       id: "sendToTTS",
-      title: "傳送文字至 TTS 播放器",
+      title: "KokoroTTS",
       contexts: ["selection"]
     });
   });
