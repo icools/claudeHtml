@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
-    "name": "Sidebar TTS Sender",
-    "version": "1.0",
+    "name": "KokorsTTS",
+    "version": "1.1",
     "description": "將選取的文字傳送到側邊欄 TTS 播放器。",
     "permissions": [
       "contextMenus",

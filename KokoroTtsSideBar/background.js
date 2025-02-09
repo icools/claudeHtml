@@ -9,8 +9,12 @@ chrome.runtime.onInstalled.addListener(() => {
     });
   });
   
-  chrome.contextMenus.onClicked.addListener((info, tab) => {
+  chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === "sendToTTS" && info.selectionText) {
+      // 先開啟側邊欄
+      await chrome.sidePanel.open({ windowId: tab.windowId });
+      
+      // 發送文字到 TTS
       chrome.runtime.sendMessage({ type: "TTS_TEXT", text: info.selectionText }, (response) => {
         if (chrome.runtime.lastError) {
           console.error("訊息發送失敗：", chrome.runtime.lastError.message);
