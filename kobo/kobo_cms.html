@@ -1,5 +1,24 @@
 <!-- KOBO的request限制，不能用async , 要用XMLHttpRequest -->
+<!-- but 居然可以使用ws -->
 
+<!--
+avaScript語法限制
+不支援的ES6+特性:
+❌ Arrow functions (=>)
+❌ const 和 let 關鍵字
+❌ Template literals ( `)
+❌ Destructuring 解構賦值
+❌ Spread operator (...)
+❌ Optional chaining (?.)
+❌ Nullish coalescing (??)
+❌ async/await
+API和功能限制:
+❌ fetch API
+❌ WebSocket API (部分設備支援)
+❌ Promise
+❌ localStorage (部分設備支援)
+❌ sessionStorage
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,9 +65,9 @@
     </style>
 </head>
 <body>
+    <h2>最新消息</h2>
     <div id="dashboard">
         <div class="data-item">
-            <h2>最新消息</h2>
             <p id="chtmessage"></p>
             <p id="content"></p>
             <p id="updatetime"></p>
@@ -57,7 +76,53 @@
 
     <script>
 
-        // Replace the existing fetchNews function with this version:
+        function callGroqNoPromise(apiKey, paramText, successCallback, errorCallback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "https://api.groq.com/openai/v1/chat/completions");
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.setRequestHeader("Authorization", "Bearer " + apiKey);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        var data = JSON.parse(xhr.responseText);
+                        if (successCallback) {
+                            var content = "";
+                            if (data.choices && 
+                                data.choices[0] && 
+                                data.choices[0].message && 
+                                data.choices[0].message.content) {
+                                content = data.choices[0].message.content;
+                            }
+                            successCallback(content);
+                        }
+                    } else {
+                        if (errorCallback) {
+                            errorCallback("Request failed with status " + xhr.status);
+                        }
+                    }
+                }
+            };
+            xhr.onerror = function() {
+                if (errorCallback) {
+                    errorCallback("Request error");
+                }
+            };
+            xhr.send(JSON.stringify({
+                messages: [
+                    { role: "system", content: "用台灣PTT鄉民的口氣，幽默又風趣做總結，但不要刻意提到PTT鄉民，用繁體中文回覆，不要用markdown,盡量用空白還有換行來做排版" },
+                    { role: "user", content: paramText }
+                ],
+                model: "gemma2-9b-it",
+                temperature: 0.8,
+                max_completion_tokens: 1024,
+                top_p: 1,
+                stream: false,
+                stop: null
+            }));
+        }
+
+        var key = "";
+
         function fetchNews() {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", "https://tcgbusfs.blob.core.windows.net/dotapp/news.json");
@@ -72,6 +137,15 @@
                         document.getElementById('chtmessage').textContent = randomItem.chtmessage;
                         document.getElementById('content').textContent = randomItem.content;
                         document.getElementById('updatetime').textContent = formattedDate;
+
+                        // var paramText = randomItem.chtmessage + " " + randomItem.content + " " + formattedDate;
+                        // callGroqNoPromise(key, paramText, function(response) {
+                        //     document.getElementById('chtmessage').textContent = randomItem.chtmessage;
+                        //     document.getElementById('content').textContent = response;
+                        //     document.getElementById('updatetime').textContent = formattedDate;
+                        // }, function(error) {
+                        //     console.error("Error calling Groq: " + error);
+                        // });
                     }
                 } else {
                     console.error("Error fetching news: " + xhr.status);
@@ -83,8 +157,8 @@
             xhr.send();
         }
 
-        //setInterval(simulateWeatherUpdate, 5000);
         fetchNews();
+        setInterval(fetchNews, 60000);
     </script>
 </body>
 </html>
