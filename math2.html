@@ -18,22 +18,18 @@
 </head>
 <body>
     <script>
-        let w = 400;
-        let s = 4;
-        let t = 0;
+        let w, s = 4, t = 0;
 
         function a(x, y, d = -Math.exp(-mag(k = w * noise(t) - x, e = w * noise(t, 9) - y) / (40 + 145 * noise(x / 50, y / 50)))) {
             return [x + k * d, y + e * d];
         }
 
         function setup() {
+            w = Math.min(windowWidth, windowHeight);
             createCanvas(w, w);
         }
 
         function draw() {
-            if (t === 0) {
-                createCanvas(w, w);
-            }
             noFill();
             background(248);
             for (let y = 0; y < w; y += s) {
@@ -45,6 +41,11 @@
                 }
             }
             t += 0.02;
+        }
+
+        function windowResized() {
+            w = Math.min(windowWidth, windowHeight);
+            resizeCanvas(w, w);
         }
     </script>
 </body>

@@ -1,0 +1,90 @@
+<!-- KOBO的request限制，不能用async , 要用XMLHttpRequest -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard - Feature Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        #dashboard {
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 450px;
+            border-radius: 10px;
+        }
+        .data-item {
+            margin: 20px 0;
+        }
+        .data-item h1 {
+            font-size: 48px;
+            margin: 10px 0;
+            color: #0073e6;
+        }
+        .data-item p {
+            font-size: 18px;
+            margin: 5px 0;
+        }
+        #feature-tests {
+            font-size: 14px;
+            margin-top: 20px;
+            text-align: left;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div id="dashboard">
+        <div class="data-item">
+            <h2>最新消息</h2>
+            <p id="chtmessage"></p>
+            <p id="content"></p>
+            <p id="updatetime"></p>
+        </div>
+    </div>
+
+    <script>
+
+        // Replace the existing fetchNews function with this version:
+        function fetchNews() {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "https://tcgbusfs.blob.core.windows.net/dotapp/news.json");
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    var data = JSON.parse(xhr.responseText);
+                    var newsItems = data.News || [];
+                    if (newsItems.length > 0) {
+                        var randomItem = newsItems[Math.floor(Math.random() * newsItems.length)];
+                        var dateStr = randomItem.updatetime.substring(0, 8);
+                        var formattedDate = dateStr.slice(0,4) + '/' + dateStr.slice(4,6) + '/' + dateStr.slice(6,8);
+                        document.getElementById('chtmessage').textContent = randomItem.chtmessage;
+                        document.getElementById('content').textContent = randomItem.content;
+                        document.getElementById('updatetime').textContent = formattedDate;
+                    }
+                } else {
+                    console.error("Error fetching news: " + xhr.status);
+                }
+            };
+            xhr.onerror = function() {
+                console.error("Request error");
+            };
+            xhr.send();
+        }
+
+        //setInterval(simulateWeatherUpdate, 5000);
+        fetchNews();
+    </script>
+</body>
+</html>
