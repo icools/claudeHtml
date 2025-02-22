@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Breathing Number Sphere</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        let points = [];
+        let baseRadius;
+        let breathingSpeed = 0.02;
+        let breathingAmount;
+        let breathingPhase = 0;
+        let angleX = 0;
+        let angleY = 0;
+        let fov = 300;
+        let zOffset = 300;
+
+        function calculateRadius() {
+            // 取螢幕寬度和高度中的較小值的45%作為基礎半徑
+            // (因為直徑會是90%)
+            baseRadius = min(windowWidth, windowHeight) * 0.45;
+            // 設置呼吸幅度為基礎半徑的20%
+            breathingAmount = baseRadius * 0.2;
+            // 調整 zOffset 確保球體完全可見
+            zOffset = baseRadius * 1.5;
+        }
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            background(0);
+            
+            textFont('monospace');
+            textSize(16);
+            textAlign(CENTER, CENTER);
+            
+            calculateRadius();
+            updateSpherePoints();
+        }
+
+        function updateSpherePoints() {
+            points = [];
+            let currentRadius = baseRadius + sin(breathingPhase) * breathingAmount;
+            
+            let latSteps = 20;
+            let lonSteps = 40;
+            
+            for (let i = 0; i <= latSteps; i++) {
+                let theta = map(i, 0, latSteps, 0, PI);
+                
+                for (let j = 0; j < lonSteps; j++) {
+                    let phi = map(j, 0, lonSteps, 0, TWO_PI);
+                    
+                    let x = currentRadius * sin(theta) * cos(phi);
+                    let y = currentRadius * sin(theta) * sin(phi);
+                    let z = currentRadius * cos(theta);
+                    
+                    let digit = floor(random(10));
+                    points.push({ x, y, z, digit });
+                }
+            }
+        }
+
+        function draw() {
+            background(0);
+            
+            breathingPhase += breathingSpeed;
+            updateSpherePoints();
+            
+            angleX += 0.01;
+            angleY += 0.01;
+            
+            for (let pt of points) {
+                let x1 = pt.x * cos(angleY) - pt.z * sin(angleY);
+                let z1 = pt.x * sin(angleY) + pt.z * cos(angleY);
+                let y1 = pt.y;
+                
+                let y2 = y1 * cos(angleX) - z1 * sin(angleX);
+                let z2 = y1 * sin(angleX) + z1 * cos(angleX);
+                let x2 = x1;
+                
+                let z2p = z2 + zOffset;
+                
+                let scaleFactor = fov / (fov + z2p);
+                let px = x2 * scaleFactor + width / 2;
+                let py = y2 * scaleFactor + height / 2;
+                
+                let brightness = map(z2p, zOffset - baseRadius, zOffset + baseRadius, 255, 150);
+                brightness = constrain(brightness, 150, 255);
+                
+                let breatheBrightness = map(sin(breathingPhase), -1, 1, -20, 20);
+                brightness += breatheBrightness;
+                brightness = constrain(brightness, 150, 255);
+                
+                fill(brightness);
+                noStroke();
+                text(pt.digit, px, py);
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+            calculateRadius();
+        }
+    </script>
+</body>
+</html>
