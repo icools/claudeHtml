@@ -78,7 +78,7 @@ API和功能限制:
 
         function callSummery(successCallback, errorCallback) {
             var xhr = new XMLHttpRequest();
-            xhr.open("GET", "/api/news/summary");
+            xhr.open("GET", "http://192.168.114.16/api/news/summary");
             xhr.setRequestHeader("Content-Type", "application/json");
             xhr.withCredentials = true;
             xhr.onreadystatechange = function() {
