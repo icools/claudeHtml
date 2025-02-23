@@ -76,24 +76,27 @@ API和功能限制:
 
     <script>
 
-        function callGroqNoPromise(apiKey, paramText, successCallback, errorCallback) {
+        function callSummery(successCallback, errorCallback) {
             var xhr = new XMLHttpRequest();
-            xhr.open("POST", "https://api.groq.com/openai/v1/chat/completions");
+            xhr.open("GET", "/api/news/summary");
             xhr.setRequestHeader("Content-Type", "application/json");
-            xhr.setRequestHeader("Authorization", "Bearer " + apiKey);
+            xhr.withCredentials = true;
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
-                        var data = JSON.parse(xhr.responseText);
-                        if (successCallback) {
-                            var content = "";
-                            if (data.choices && 
-                                data.choices[0] && 
-                                data.choices[0].message && 
-                                data.choices[0].message.content) {
-                                content = data.choices[0].message.content;
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+                            if (successCallback) {
+                                var result = {
+                                    summary: data.ai_summary || "",
+                                    updateTime: data.updateTime || ""
+                                };
+                                successCallback(result);
                             }
-                            successCallback(content);
+                        } catch (e) {
+                            if (errorCallback) {
+                                errorCallback("JSON parsing error: " + e.message);
+                            }
                         }
                     } else {
                         if (errorCallback) {
@@ -107,58 +110,52 @@ API和功能限制:
                     errorCallback("Request error");
                 }
             };
-            xhr.send(JSON.stringify({
-                messages: [
-                    { role: "system", content: "用台灣PTT鄉民的口氣，幽默又風趣做總結，但不要刻意提到PTT鄉民，用繁體中文回覆，不要用markdown,盡量用空白還有換行來做排版" },
-                    { role: "user", content: paramText }
-                ],
-                model: "gemma2-9b-it",
-                temperature: 0.8,
-                max_completion_tokens: 1024,
-                top_p: 1,
-                stream: false,
-                stop: null
-            }));
+            xhr.send();
         }
 
         var key = "";
 
         function fetchNews() {
-            var xhr = new XMLHttpRequest();
-            xhr.open("GET", "https://tcgbusfs.blob.core.windows.net/dotapp/news.json");
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    var data = JSON.parse(xhr.responseText);
-                    var newsItems = data.News || [];
-                    if (newsItems.length > 0) {
-                        var randomItem = newsItems[Math.floor(Math.random() * newsItems.length)];
-                        var dateStr = randomItem.updatetime.substring(0, 8);
-                        var formattedDate = dateStr.slice(0,4) + '/' + dateStr.slice(4,6) + '/' + dateStr.slice(6,8);
-                        document.getElementById('chtmessage').textContent = randomItem.chtmessage;
-                        document.getElementById('content').textContent = randomItem.content;
-                        document.getElementById('updatetime').textContent = formattedDate;
+            // var xhr = new XMLHttpRequest();
+            // xhr.open("GET", "https://tcgbusfs.blob.core.windows.net/dotapp/news.json");
+            // xhr.onload = function() {
+            //     if (xhr.status === 200) {
+            //         var data = JSON.parse(xhr.responseText);
+            //         var newsItems = data.News || [];
+            //         if (newsItems.length > 0) {
+            //             var randomItem = newsItems[Math.floor(Math.random() * newsItems.length)];
+            //             var dateStr = randomItem.updatetime.substring(0, 8);
+            //             var formattedDate = dateStr.slice(0,4) + '/' + dateStr.slice(4,6) + '/' + dateStr.slice(6,8);
+            //             document.getElementById('chtmessage').textContent = randomItem.chtmessage;
+            //             document.getElementById('content').textContent = randomItem.content;
+            //             document.getElementById('updatetime').textContent = formattedDate;
 
-                        // var paramText = randomItem.chtmessage + " " + randomItem.content + " " + formattedDate;
-                        // callGroqNoPromise(key, paramText, function(response) {
-                        //     document.getElementById('chtmessage').textContent = randomItem.chtmessage;
-                        //     document.getElementById('content').textContent = response;
-                        //     document.getElementById('updatetime').textContent = formattedDate;
-                        // }, function(error) {
-                        //     console.error("Error calling Groq: " + error);
-                        // });
-                    }
-                } else {
-                    console.error("Error fetching news: " + xhr.status);
-                }
-            };
-            xhr.onerror = function() {
-                console.error("Request error");
-            };
-            xhr.send();
+
+            //         }
+            //     } else {
+            //         console.error("Error fetching news: " + xhr.status);
+            //     }
+            // };
+            // xhr.onerror = function() {
+            //     console.error("Request error");
+            // };
+            // xhr.send();
         }
 
-        fetchNews();
-        setInterval(fetchNews, 60000);
+        function update() {
+            callSummery(
+                function(result) {
+                    document.getElementById('content').textContent = result.summary;
+                    document.getElementById('updatetime').textContent = result.updateTime;
+                },
+                function(error) {
+                    console.error("Error:", error);
+                }
+            );
+        }
+
+        update();
+        setInterval(update, 60000);
     </script>
 </body>
 </html>
