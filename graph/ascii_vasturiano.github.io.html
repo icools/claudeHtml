@@ -10,10 +10,10 @@
 
   <script type="importmap">{ "imports": { "three": "https://unpkg.com/three/build/three.module.js" }}</script>
   <script src="vasturiano.js"></script>
-  <script src="data.js"></script>
+  <script src="data_ai.js"></script>
   <script type="module">
     import SpriteText from "https://unpkg.com/three-spritetext/dist/three-spritetext.mjs";
-    const blob1 = new Blob([JSON.stringify(jsonNew, null, 2)], { type: 'application/json' });
+    const blob1 = new Blob([JSON.stringify(jsonAIExtended, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob1);
     const Graph = ForceGraph3D()
       (document.getElementById('3d-graph'))
