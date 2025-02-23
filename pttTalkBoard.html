@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            color: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: "微軟正黑體", sans-serif;
+            overflow: hidden;
+        }
+        #quote {
+            padding: 20px;
+            text-align: center;
+            white-space: normal; /* 新增 */
+        }
+    </style>
+</head>
+<body>
+    <div id="quote"></div>
+
+    <script>
+        const quotes = [
+            "你說的算啊",
+            "隨便啦",
+            "你過你的奈何橋，我吃我的麥當勞",
+            "今日事，都是屁",
+            "今天的事情沒做完，明天再做就好了"
+        ];
+
+        function updateQuote() {
+            const quoteElement = document.getElementById('quote');
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            quoteElement.textContent = randomQuote;
+            adjustFontSize();
+        }
+
+        function adjustFontSize() {
+            const quote = document.getElementById('quote');
+            const container = document.body;
+            const containerWidth = container.offsetWidth * 0.9;
+            const containerHeight = container.offsetHeight * 0.9;
+            // 重置字體大小並從小往上增
+            let fontSize = 10;
+            quote.style.fontSize = fontSize + 'px';
+            // 逐步放大直到超過指定寬或高
+            while (
+                quote.scrollWidth < containerWidth &&
+                quote.scrollHeight < containerHeight
+            ) {
+                fontSize++;
+                quote.style.fontSize = fontSize + 'px';
+            }
+            // 回到上一個可行大小
+            quote.style.fontSize = (fontSize - 1) + 'px';
+        }
+
+        updateQuote();
+        setInterval(updateQuote, 3000);
+        window.addEventListener('resize', adjustFontSize);
+    </script>
+</body>
+</html>

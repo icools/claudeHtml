@@ -380,14 +380,17 @@
 
                 // 更新底部字幕
                 if (subtitle) {
+                    if (subtitle != subtitleElement.innerText) {
+                        update3dCircleText();
+                    }
+
                     subtitleElement.innerText = subtitle;
                 } else {
                     subtitleElement.innerText = "目前沒有字幕顯示。";
                 }
             });
 
-            // 点击画布更新 3D 文本
-            CANVAS.addEventListener('click', function() {
+            function update3dCircleText() {
                 const currentTime = audioPlayer.currentTime;
                 let subtitle = null;
 
@@ -401,6 +404,11 @@
                 if (subtitle) {
                     createCharsByQueryString(subtitle);
                 }
+            }
+
+            // 点击画布更新 3D 文本
+            CANVAS.addEventListener('click', function() {
+                update3dCircleText();   
             });
 
             // 点击底部字幕切换顶部工具栏的显示
